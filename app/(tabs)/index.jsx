@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import { StyleSheet, ScrollView, TouchableOpacity, View, Text } from 'react-native';
 import { Link } from 'expo-router';
+import supabase from '../../db/supabaseClient.js';
+
+// test connection to database
+// console.log('Supabase connection:', supabase);
 
 // Define workout data structures
 class Set {

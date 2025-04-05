@@ -53,11 +53,6 @@ export default class Exercise extends BaseModel {
     else if (!this.intervals) this.intervals = [];
     else this.intervals.push(interval);
   }
-
-  getSetNumber(set) {
-    if (!set instanceof Set) throw new Error('Set must be an instance of Set');
-    return this.sets.length;
-  }
   
   clone() {
     return new Exercise(this.name, this.sets, this.intervals, this.restTime, this.notes);

@@ -8,7 +8,7 @@ export default function WorkoutCard({ workout, handleStartWorkout }) {
       <View style={styles.exerciseList}>
         {workout.exercises.map((exercise, index) => (
           <Text key={index} style={styles.exercise}>
-            • {exercise.name} x {exercise.sets.getSetNumber()}
+            • {exercise.name} x {exercise.sets.length}
           </Text>
         ))}
       </View>
