@@ -1,9 +1,14 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { Link, router } from 'expo-router';
+import supabase from '../../db/supabaseClient.js';
+
+// test connection to database
+// console.log('Supabase connection:', supabase);
 
 export default function SignupScreen() {
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -15,7 +20,7 @@ export default function SignupScreen() {
     setError('');
     
     // Validate inputs
-    if (!name || !email || !password || !confirmPassword) {
+    if (!firstName || !lastName || !email || !password || !confirmPassword) {
       setError('Please fill in all fields');
       return;
     }
@@ -29,18 +34,41 @@ export default function SignupScreen() {
       setError('Password must be at least 6 characters');
       return;
     }
+
+    // Validate email format using regex
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
     
     setIsLoading(true);
-    
+
     try {
-      // In a real app, you would connect to your authentication service here
-      // For now, we'll just simulate a successful signup after a short delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      // Sign up the user with Supabase Auth
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+          },
+        }
+      });
+
+      if (signUpError) {
+        throw new Error(signUpError.message || 'Signup failed');
+      }
+      // successful signup!!
+      console.log('User signed up:', data.user);
+
       // Navigate to the main app
       router.replace('/(tabs)');
-    } catch (err) {
-      setError('Signup failed. Please try again.');
+
+    } catch (error) {
+      console.error('Signup error:', error);
+      setError(error.message || 'Signup failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -60,13 +88,22 @@ export default function SignupScreen() {
             
             <TextInput
               style={styles.input}
-              placeholder="Full Name"
+              placeholder="First Name"
               placeholderTextColor="#999"
-              value={name}
-              onChangeText={setName}
+              value={firstName}
+              onChangeText={setFirstName}
               autoCapitalize="words"
             />
             
+            <TextInput
+              style={styles.input}
+              placeholder="Last Name"
+              placeholderTextColor="#999"
+              value={lastName}
+              onChangeText={setLastName}
+              autoCapitalize="words"
+            />
+
             <TextInput
               style={styles.input}
               placeholder="Email"

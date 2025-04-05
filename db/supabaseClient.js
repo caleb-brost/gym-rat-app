@@ -1,37 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 import Constants from 'expo-constants';
 
-// Get environment variables from Expo Constants
-// These are loaded from app.config.js which gets them from .env
-let supabaseUrl, supabaseAnonKey;
+// Supabase URLs and keys
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://osyxryudrbbggwqrtpgr.supabase.co';
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9zeXhyeXVkcmJiZ2d3cXJ0cGdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM3OTMxMzEsImV4cCI6MjA1OTM2OTEzMX0.QdgrK4aa1QymoUZusFOKpsWW_HcvAXSxGmnC1oT4qvk';
 
-// Check if we're in a production environment
-if (process.env.NODE_ENV === 'production') {
-  // Use environment variables in production
-  supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-  supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-} else {
-  // In development, try to get from Constants first
-  try {
-    supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl;
-    supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey;
-    
-    // If not available in Constants, fall back to environment variables
-    if (!supabaseUrl || !supabaseAnonKey) {
-      supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-      supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-    }
-  } catch (error) {
-    console.error('Error loading Supabase credentials:', error);
-  }
-}
-
-// Validate that we have the required credentials
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Supabase credentials not found. Please check your environment variables.');
-}
-
-// Create the Supabase client
-const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '');
+// Initialize the Supabase client
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export default supabase;

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Link } from 'react-native';
+import { router } from 'expo-router';
+
 
 export default function ProfileScreen() {
   const userStats = {
@@ -7,6 +9,11 @@ export default function ProfileScreen() {
     workoutsCompleted: 48,
     totalWeight: 24600,
     memberSince: '2025-01-01',
+  };
+
+  const handleLogout = async () => {
+    // TODO: Implement logout logic
+    router.replace('/(auth)/login');
   };
 
   return (
@@ -37,6 +44,12 @@ export default function ProfileScreen() {
         </TouchableOpacity>
         <TouchableOpacity style={styles.menuItem}>
           <Text>Settings</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
       </View>
 
@@ -106,6 +119,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#dc3545',
     marginTop: 20,
     alignSelf: 'center',
+    padding: 15,
+    borderRadius: 10,
   },
   logoutText: {
     color: '#fff',

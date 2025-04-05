@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, Image, KeyboardAvoidingView, Platform } from 'react-native';
 import { Link, router } from 'expo-router';
+import supabase from '../../db/supabaseClient.js';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -18,17 +19,34 @@ export default function LoginScreen() {
       return;
     }
     
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+    
     setIsLoading(true);
     
     try {
-      // In a real app, you would connect to your authentication service here
-      // For now, we'll just simulate a successful login after a short delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Sign in with Supabase Auth
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (error) {
+        throw new Error(error.message || 'Login failed');
+      }
+      
+      // Successful login
+      console.log('User logged in:', data.user);
       
       // Navigate to the main app
       router.replace('/(tabs)');
-    } catch (err) {
-      setError('Login failed. Please check your credentials.');
+    } catch (error) {
+      console.error('Login error:', error);
+      setError(error.message || 'Login failed. Please check your credentials.');
     } finally {
       setIsLoading(false);
     }
@@ -64,7 +82,10 @@ export default function LoginScreen() {
           secureTextEntry
         />
         
-        <TouchableOpacity style={styles.forgotPassword}>
+        <TouchableOpacity 
+          style={styles.forgotPassword}
+          onPress={() => router.push('/(auth)/reset-password')}
+        >
           <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
         </TouchableOpacity>
 
