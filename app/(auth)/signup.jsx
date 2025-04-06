@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { Link, router } from 'expo-router';
 import supabase from '../../db/supabaseClient.js';
+import { createAuthUser, createUserProfile } from '../../services/auth/authService.js';
 
 // test connection to database
 // console.log('Supabase connection:', supabase);
@@ -16,6 +17,7 @@ export default function SignupScreen() {
   const [error, setError] = useState('');
 
   const handleSignup = async () => {
+
     // Reset error state
     setError('');
     
@@ -45,30 +47,52 @@ export default function SignupScreen() {
     setIsLoading(true);
 
     try {
+      // Supabase will automatically check for duplicate emails during signup
+      
       // Sign up the user with Supabase Auth
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            first_name: firstName,
-            last_name: lastName,
-          },
-        }
+      const { data, error } = await createAuthUser({ 
+        email, 
+        password, 
+        firstName, 
+        lastName, 
+        setError
       });
-
-      if (signUpError) {
-        throw new Error(signUpError.message || 'Signup failed');
+      
+      if (error || !data) {
+        return;
       }
-      // successful signup!!
-      console.log('User signed up:', data.user);
-
-      // Navigate to the main app
-      router.replace('/(tabs)');
-
+      
+      console.log("Auth data:", JSON.stringify(data));
+      
+      // Make sure we have a user object with an ID
+      if (!data.user || !data.user.id) {
+        setError('Failed to get user ID from authentication');
+        console.error('No user ID in auth response:', data);
+        return;
+      }
+      
+      // After successful signup, create a profile in the database
+      const success = await createUserProfile({
+        user: data.user,
+        email,
+        firstName,
+        lastName,
+        setError
+      });
+      
+      console.log("Profile creation result:", success);
+      
+      if (success) {
+        // Successfully signed up!
+        console.log('User signed up:', data.user.id);
+        
+        // Navigate to the main app
+        router.replace('/(tabs)');
+      }
     } catch (error) {
+      // This is just a fallback in case something unexpected happens
       console.error('Signup error:', error);
-      setError(error.message || 'Signup failed. Please try again.');
+      setError('An unexpected error occurred. Please try again.');
     } finally {
       setIsLoading(false);
     }
