@@ -62,8 +62,6 @@ export default function SignupScreen() {
         return;
       }
       
-      console.log("Auth data:", JSON.stringify(data));
-      
       // Make sure we have a user object with an ID
       if (!data.user || !data.user.id) {
         setError('Failed to get user ID from authentication');
@@ -71,24 +69,14 @@ export default function SignupScreen() {
         return;
       }
       
-      // After successful signup, create a profile in the database
-      const success = await createUserProfile({
-        user: data.user,
-        email,
-        firstName,
-        lastName,
-        setError
-      });
+      // After successful signup and profile creation
+      console.log('User signed up and profile created:', data.user.id);
       
-      console.log("Profile creation result:", success);
+      // Navigate to the main app
+      router.replace('/(tabs)');
       
-      if (success) {
-        // Successfully signed up!
-        console.log('User signed up:', data.user.id);
-        
-        // Navigate to the main app
-        router.replace('/(tabs)');
-      }
+      // Note: For production, you might want to enable email confirmation
+      // and show a message asking the user to confirm their email
     } catch (error) {
       // This is just a fallback in case something unexpected happens
       console.error('Signup error:', error);
