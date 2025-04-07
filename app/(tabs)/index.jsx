@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, ScrollView, TouchableOpacity, View, Text } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
+import WorkoutCard from '../../components/WorkoutCard';
 
 // Define workout data structures
 class Set {
@@ -60,19 +61,11 @@ export default function DashboardScreen() {
     <ScrollView style={styles.container}>
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Today's Workout</Text>
-        <View style={styles.workoutCard}>
-          <Text style={styles.workoutName}>{todaysWorkout.name}</Text>
-          <View style={styles.exerciseList}>
-            {todaysWorkout.exercises.map((exercise, index) => (
-              <Text key={index} style={styles.exerciseText}>• {exercise.name}</Text>
-            ))}
-          </View>
-          <Link href="/(workout)/active" asChild>
-            <TouchableOpacity style={styles.startButton}>
-              <Text style={styles.startButtonText}>Start Workout</Text>
-            </TouchableOpacity>
-          </Link>
-        </View>
+        <WorkoutCard 
+          workout={todaysWorkout} 
+          handleStartWorkout={() => router.push('/(workout)/active')} 
+          buttonText="Start Workout"
+        />
       </View>
 
       <View style={styles.section}>

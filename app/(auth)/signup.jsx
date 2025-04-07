@@ -62,21 +62,9 @@ export default function SignupScreen() {
         return;
       }
       
-      // Make sure we have a user object with an ID
-      if (!data.user || !data.user.id) {
-        setError('Failed to get user ID from authentication');
-        console.error('No user ID in auth response:', data);
-        return;
-      }
-      
-      // After successful signup and profile creation
-      console.log('User signed up and profile created:', data.user.id);
-      
       // Navigate to the main app
       router.replace('/(tabs)');
-      
-      // Note: For production, you might want to enable email confirmation
-      // and show a message asking the user to confirm their email
+
     } catch (error) {
       // This is just a fallback in case something unexpected happens
       console.error('Signup error:', error);

@@ -1,14 +1,14 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 
-export default function WorkoutCard({ workout, handleStartWorkout }) {
+export default function WorkoutCard({ workout, handleStartWorkout, buttonText = 'Start Workout' }) {
   return (
     <View style={styles.templateCard}>
       <Text style={styles.templateName}>{workout.name}</Text>
       <View style={styles.exerciseList}>
-        {workout.exercises.map((exercise, index) => (
+        {workout.exercises && workout.exercises.map((exercise, index) => (
           <Text key={index} style={styles.exercise}>
-            • {exercise.name} x {exercise.sets.length}
+            • {exercise.name} x {exercise.sets?.length || '?'}
           </Text>
         ))}
       </View>
@@ -16,14 +16,20 @@ export default function WorkoutCard({ workout, handleStartWorkout }) {
         style={styles.startButton}
         onPress={() => handleStartWorkout(workout)}
       >
-        <Text style={styles.startButtonText}>Start Workout</Text>
+        <Text style={styles.startButtonText}>{buttonText}</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
-export const renderItem = ({ item }) => (
-  <WorkoutCard workout={item} handleStartWorkout={startNewWorkout} />
+// This is a helper function to use with FlatList
+// Usage example: <FlatList data={workouts} renderItem={renderWorkoutCard(handleStartWorkout)} />
+export const renderWorkoutCard = (handleStartWorkout, buttonText) => ({ item }) => (
+  <WorkoutCard 
+    workout={item} 
+    handleStartWorkout={handleStartWorkout}
+    buttonText={buttonText}
+  />
 );
 
 const styles = StyleSheet.create({

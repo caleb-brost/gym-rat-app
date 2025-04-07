@@ -1,65 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, TouchableOpacity, FlatList, View, Text, ScrollView } from 'react-native';
 import { router } from 'expo-router';
+import WorkoutCard from '../../components/WorkoutCard';
+import supabase from '../../db/supabaseClient.js';
 
-// Define workout data structures
-class Set {
-  constructor(weight, reps, setNumber) {
-    this.weight = weight;
-    this.reps = reps;
-    this.setNumber = setNumber;
-    this.completed = false;
-  }
-}
-
-class Exercise {
-  constructor(name, sets = []) {
-    this.name = name;
-    this.sets = sets;
-  }
-}
-
-class Workout {
-  constructor(name, exercises = [], date = new Date()) {
-    this.name = name;
-    this.exercises = exercises;
-    this.date = date;
-    this.completed = false;
-  }
-}
 
 export default function TemplatesScreen() {
-  // Use local state instead of context
-  const [templates] = useState([
-    new Workout(
-      'Push Day',
-      [
-        new Exercise('Bench Press', [
-          new Set(135, 10, 1),
-          new Set(135, 9, 2),
-          new Set(120, 7, 3)
-        ]),
-        new Exercise('Shoulder Press', [new Set(0, 0, 1)]),
-        new Exercise('Triceps Extension', [new Set(0, 0, 1)])
-      ]
-    ),
-    new Workout(
-      'Pull Day',
-      [
-        new Exercise('Deadlift', [new Set(0, 0, 1)]),
-        new Exercise('Barbell Row', [new Set(0, 0, 1)]),
-        new Exercise('Bicep Curl', [new Set(0, 0, 1)])
-      ]
-    ),
-    new Workout(
-      'Leg Day',
-      [
-        new Exercise('Squat', [new Set(0, 0, 1)]),
-        new Exercise('Romanian Deadlift', [new Set(0, 0, 1)]),
-        new Exercise('Calf Raises', [new Set(0, 0, 1)])
-      ]
-    ),
-  ]);
+  const [templates, setTemplates] = useState([]);
+
+  const retrieveTemplates = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('workouts_templates')
+        .select('*');
+      if (error) throw error;
+      setTemplates(data);
+      console.log('Templates retrieved:', data);
+    } catch (error) {
+      console.error('Error fetching templates:', error);
+      return [];
+    }
+  };
+
+  useEffect(() => {
+    retrieveTemplates();
+  }, []);
 
   const startWorkout = (template) => {
     // Store the selected workout in localStorage or AsyncStorage
@@ -68,35 +33,23 @@ export default function TemplatesScreen() {
     router.push('/(workout)/active');
   };
 
-  const renderItem = ({ item }) => (
-    <View style={styles.templateCard}>
-      <Text style={styles.templateName}>{item.name}</Text>
-      <View style={styles.exerciseList}>
-        {item.exercises.map((exercise, index) => (
-          <Text key={index} style={styles.exerciseText}>• {exercise.name}</Text>
-        ))}
-      </View>
-      <TouchableOpacity 
-        style={styles.startButton}
-        onPress={() => startWorkout(item)}
-      >
-        <Text style={styles.startButtonText}>Start</Text>
-      </TouchableOpacity>
-    </View>
-  );
+  const createNewTemplate = () => {
+    // Navigate to the create template screen
+    router.push('/(workout)/create-template');
+  };
 
   return (
     <ScrollView style={styles.container}>
-      <FlatList
-        data={templates}
-        renderItem={renderItem}
-        keyExtractor={(item, index) => index.toString()}
-        numColumns={2}
-        columnWrapperStyle={styles.row}
-        showsVerticalScrollIndicator={false}
-      />
+      {templates.map((template, index) => (
+        <WorkoutCard
+          key={index}
+          workout={template}
+          handleStartWorkout={startWorkout}
+          buttonText="Use Template"
+        />
+      ))}
       <View style={styles.createButtonContainer}>
-        <TouchableOpacity style={styles.createButton}>
+        <TouchableOpacity style={styles.createButton} onPress={createNewTemplate}>
           <Text style={styles.createButtonText}>Create New Template</Text>
         </TouchableOpacity>
       </View>
