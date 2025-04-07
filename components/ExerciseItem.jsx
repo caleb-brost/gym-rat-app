@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import EditNameModal from './EditNameModal';
+import ExerciseTemplate from '../models/ExerciseTemplate';
 
 export default function ExerciseItem({ 
   exercise, 
@@ -10,62 +11,105 @@ export default function ExerciseItem({
   removeExercise,
   isRemovable = true
 }) {
+  // Convert exercise to ExerciseTemplate if it's not already
+  const [exerciseModel, setExerciseModel] = useState(() => {
+    if (exercise instanceof ExerciseTemplate) {
+      return exercise;
+    } else {
+      const newExercise = new ExerciseTemplate(
+        exercise.name || 'Untitled',
+        Array.isArray(exercise.sets) ? exercise.sets.length : (exercise.sets || 1),
+        '',  // notes
+        null, // templateId
+        exercise.orderIndex || index  
+      );
+      
+      // If exercise has set details, add them to the model
+      if (Array.isArray(exercise.sets)) {
+        newExercise.setDetails = exercise.sets;
+      }
+      
+      return newExercise;
+    }
+  });
+
   const [modalVisible, setModalVisible] = useState(false);
-  const [tempExerciseName, setTempExerciseName] = useState(exercise.name || 'Untitled');
-  const displayName = exercise.name || 'Untitled';
-  // Initialize sets array if it doesn't exist or is just a number
-  const [setCount, setSetCount] = useState(typeof exercise.sets === 'number' ? exercise.sets : exercise.sets.length || 1);
-  const [setDetails, setSetDetails] = useState(
-    Array.isArray(exercise.sets) ? 
-    exercise.sets : 
-    Array(setCount).fill().map((_, i) => ({ weight: 0, reps: 0, setNumber: i + 1 }))
-  );
+  const [tempExerciseName, setTempExerciseName] = useState(exerciseModel.name || 'Untitled');
+  const displayName = exerciseModel.name || 'Untitled';
   
-  // Update the exercise with the new set details
-  const updateSetDetails = (setIndex, field, value) => {
-    const newSetDetails = [...setDetails];
-    newSetDetails[setIndex][field] = value;
-    setSetDetails(newSetDetails);
+  // Use the set details from the exercise model
+  const [setDetails, setSetDetails] = useState(exerciseModel.setDetails);
+  const [setCount, setSetCount] = useState(setDetails.length);
+  
+  // Update the parent component when our model changes
+  // Using a ref to track if we need to update the parent
+  const initialRender = useRef(true);
+  const modelRef = useRef(exerciseModel);
+  
+  useEffect(() => {
+    // Skip the initial render
+    if (initialRender.current) {
+      initialRender.current = false;
+      return;
+    }
     
-    // Update the parent component's state
-    updateExercise(index, 'sets', newSetDetails);
+    // Only update if the model has actually changed
+    if (modelRef.current !== exerciseModel) {
+      modelRef.current = exerciseModel;
+      // Notify parent component of model changes
+      updateExercise(index, 'model', exerciseModel);
+    }
+  }, [exerciseModel, index, updateExercise]);
+  
+  // Update a specific set detail
+  const updateSetDetails = (setIndex, field, value) => {
+    try {
+      // Use the model's method to update the set detail
+      exerciseModel.updateSetDetail(setIndex, field, value);
+      
+      // Update our local state to reflect the change
+      setSetDetails([...exerciseModel.setDetails]);
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    }
   };
   
   // Add a new set
   const addSet = () => {
-    const newSetDetails = [...setDetails, { weight: 0, reps: 0, setNumber: setDetails.length + 1 }];
-    setSetDetails(newSetDetails);
-    setSetCount(newSetDetails.length);
+    // Use the model's method to add a set
+    exerciseModel.addSet();
     
-    // Update the parent component's state
-    updateExercise(index, 'sets', newSetDetails);
+    // Update our local state to reflect the change
+    setSetDetails([...exerciseModel.setDetails]);
+    setSetCount(exerciseModel.setDetails.length);
   };
   
   // Remove a set
   const removeSet = (setIndex) => {
-    const newSetDetails = [...setDetails];
-    newSetDetails.splice(setIndex, 1);
+    // Use the model's method to remove a set
+    exerciseModel.removeSet(setIndex);
     
-    // Update set numbers
-    newSetDetails.forEach((set, idx) => {
-      set.setNumber = idx + 1;
-    });
-    
-    setSetDetails(newSetDetails);
-    setSetCount(newSetDetails.length);
-    
-    // Update the parent component's state
-    updateExercise(index, 'sets', newSetDetails);
+    // Update our local state to reflect the change
+    setSetDetails([...exerciseModel.setDetails]);
+    setSetCount(exerciseModel.setDetails.length);
   };
   // Save the exercise name from the modal
   const saveExerciseName = () => {
-    updateExercise(index, 'name', tempExerciseName);
-    setModalVisible(false);
+    try {
+      // Update the model's name
+      exerciseModel.name = tempExerciseName;
+      
+      // Create a new model reference to trigger the useEffect
+      setExerciseModel(exerciseModel.clone());
+      setModalVisible(false);
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    }
   };
   
   // Cancel editing the exercise name
   const cancelExerciseNameEdit = () => {
-    setTempExerciseName(exercise.name || 'Untitled');
+    setTempExerciseName(exerciseModel.name || 'Untitled');
     setModalVisible(false);
   };
 
@@ -108,7 +152,7 @@ export default function ExerciseItem({
         {setDetails.map((set, setIndex) => (
           <View key={setIndex} style={styles.setItem}>
             <View style={styles.setHeader}>
-              <Text style={styles.setNumber}>Set {set.setNumber}</Text>
+              <Text style={styles.setNumber}>Set {set.setOrder}</Text>
               <TouchableOpacity 
                 onPress={() => removeSet(setIndex)}
                 style={styles.removeSetButton}
@@ -138,6 +182,18 @@ export default function ExerciseItem({
                   onChangeText={(value) => updateSetDetails(setIndex, 'reps', parseInt(value) || 0)}
                   keyboardType="number-pad"
                   placeholder="0"
+                />
+              </View>
+
+              <View style={styles.numberInputContainer}>
+                <Text style={styles.inputLabel}>RPE</Text>
+                <TextInput
+                  style={styles.numberInput}
+                  value={set.rpe > 0 ? set.rpe.toString() : ''}
+                  onChangeText={(value) => updateSetDetails(setIndex, 'rpe', parseInt(value) || 0)}
+                  keyboardType="number-pad"
+                  placeholder="0-10"
+                  maxLength={2}
                 />
               </View>
             </View>
@@ -221,6 +277,24 @@ const styles = StyleSheet.create({
   },
   setNumber: {
     fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+  },
+  rpeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 4,
+  },
+  rpeLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginRight: 4,
+  },
+  rpeValue: {
+    fontSize: 12,
     fontWeight: '600',
     color: '#333',
   },

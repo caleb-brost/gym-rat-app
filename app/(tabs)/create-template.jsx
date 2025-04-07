@@ -1,35 +1,75 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, ScrollView, Alert, KeyboardAvoidingView, Platform, Modal } from 'react-native';
 import { router } from 'expo-router';
 import supabase from '../../db/supabaseClient.js';
 import ExerciseItem from '../../components/ExerciseItem';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import EditNameModal from '../../components/EditNameModal';
+import WorkoutTemplate from '../../models/WorkoutTemplate';
+import ExerciseTemplate from '../../models/ExerciseTemplate';
 
 export default function CreateTemplateScreen() {
-  const [templateName, setTemplateName] = useState('Untitled Template');
+  // Create a WorkoutTemplate model instance
+  const [workoutTemplate, setWorkoutTemplate] = useState(() => new WorkoutTemplate('Untitled Template'));
+  
+  // UI state
   const [templateModalVisible, setTemplateModalVisible] = useState(false);
-  const [templateNote, setTemplateNote] = useState('');
   const [templateNoteModalVisible, setTemplateNoteModalVisible] = useState(false);
   const [tempTemplateName, setTempTemplateName] = useState('Untitled Template');
   const [tempTemplateNote, setTempTemplateNote] = useState('');
-  const [exercises, setExercises] = useState([]);
+  // Use a ref to track the exercises to avoid infinite loops
+  const exercisesRef = useRef(workoutTemplate.exercises);
+  const [exercises, setExercises] = useState(workoutTemplate.exercises);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Convenience getters/setters for template properties
+  const templateName = workoutTemplate.name;
+  const setTemplateName = (name) => {
+    const updatedTemplate = workoutTemplate.clone();
+    updatedTemplate.name = name;
+    setWorkoutTemplate(updatedTemplate);
+  };
+  
+  const templateNote = workoutTemplate.notes;
+  const setTemplateNote = (note) => {
+    const updatedTemplate = workoutTemplate.clone();
+    updatedTemplate.notes = note;
+    setWorkoutTemplate(updatedTemplate);
+  };
 
   const addExercise = () => {
-    setExercises([...exercises, { name: 'Untitled', sets: [{ weight: 0, reps: 0, setNumber: 1 }] }]);
+    // Use the WorkoutTemplate model to add an exercise
+    const newExercise = workoutTemplate.addExercise('Untitled', 1);
+    
+    // Update our local state to reflect the change
+    const updatedExercises = [...workoutTemplate.exercises];
+    exercisesRef.current = updatedExercises;
+    setExercises(updatedExercises);
   };
 
   const removeExercise = (index) => {
-    const updatedExercises = [...exercises];
-    updatedExercises.splice(index, 1);
+    // Use the WorkoutTemplate model to remove an exercise
+    workoutTemplate.removeExercise(index);
+    
+    // Update our local state to reflect the change
+    const updatedExercises = [...workoutTemplate.exercises];
+    exercisesRef.current = updatedExercises;
     setExercises(updatedExercises);
   };
 
   const updateExercise = (index, field, value) => {
-    const updatedExercises = [...exercises];
-    updatedExercises[index][field] = value;
-    setExercises(updatedExercises);
+    try {
+      // Use the WorkoutTemplate model to update an exercise
+      workoutTemplate.updateExercise(index, field, value);
+      
+      // Update our local state to reflect the change
+      const updatedExercises = [...workoutTemplate.exercises];
+      exercisesRef.current = updatedExercises;
+      setExercises(updatedExercises);
+    } catch (error) {
+      console.error(`Error updating exercise: ${error.message}`);
+      Alert.alert('Error', error.message);
+    }
   };
 
   const saveTemplate = async () => {
@@ -57,29 +97,30 @@ export default function CreateTemplateScreen() {
         .insert([
           { 
             creator_id: user.id,
-            title: templateName,
-            note: templateNote,
+            title: workoutTemplate.name,
+            note: workoutTemplate.notes,
           }
         ])
         .select();
 
       if (templateError) throw templateError;
       
-      // Insert exercises for the template
-      const exercisesData = exercises.map((exercise, index) => {
-        // Process the exercise data for database insertion
-        const setCount = Array.isArray(exercise.sets) ? exercise.sets.length : 1;
-        const defaultReps = Array.isArray(exercise.sets) && exercise.sets.length > 0 ? 
-          exercise.sets[0].reps : 0;
-        
+      // Insert exercises for the template using the model's data
+      const exercisesData = workoutTemplate.exercises.map((exercise, index) => {
+        // All exercises are now guaranteed to be ExerciseTemplate instances
         return {
           template_id: template[0].id,
           name: exercise.name,
-          sets: setCount,
-          reps: defaultReps,
+          sets: exercise.sets,
+          note: exercise.notes,
           order_index: index,
-          // Store the full set details as JSON if needed
-          set_details: Array.isArray(exercise.sets) ? JSON.stringify(exercise.sets) : null
+          // Store the full set details as JSON
+          set_details: JSON.stringify(exercise.setDetails.map(set => ({
+            weight: set.weight,
+            reps: set.reps,
+            rpe: set.rpe,
+            set_order: set.setOrder
+          })))
         };
       });
 

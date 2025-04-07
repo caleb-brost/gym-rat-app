@@ -8,7 +8,7 @@ export default class Exercise extends BaseModel {
   #restTime;
   
   constructor(name, sets = [], intervals = [], restTime = 0, notes = '') {
-    super();
+    super(name, notes);
 
     this.#sets = sets;
     this.#intervals = intervals;

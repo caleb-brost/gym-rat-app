@@ -1,13 +1,11 @@
-export default class Workout extends BaseModel {
-  #exercises;
-  #name;
-  #note;
+import BaseModel from './BaseModel.js';
+import ExerciseTemplate from './ExerciseTemplate.js';
 
-  constructor(name, note = '', exercises = []) {
-    super();
+export default class WorkoutTemplate extends BaseModel {
+  #exercises = [];
 
-    this.name = name;
-    this.note = note;
+  constructor(name, notes = '', exercises = []) {
+    super(name, notes);
     this.exercises = exercises;
   }
 
@@ -17,29 +15,94 @@ export default class Workout extends BaseModel {
 
   set exercises(exercises) {
     if (!Array.isArray(exercises)) throw new Error('Exercises must be an array');
-    else if (!exercises.every(e => e instanceof Exercise)) throw new Error('Exercises must be an array of Exercise instances');
-    this.#exercises = exercises;
+    
+    // Convert any plain objects to ExerciseTemplate instances
+    this.#exercises = exercises.map((exercise, index) => {
+      if (exercise instanceof ExerciseTemplate) {
+        // Update the order index
+        exercise.orderIndex = index;
+        return exercise;
+      } else {
+        // Create a new ExerciseTemplate from the plain object
+        return new ExerciseTemplate(
+          exercise.name || 'Untitled',
+          Array.isArray(exercise.sets) ? exercise.sets.length : (exercise.sets || 1),
+          exercise.notes || '',
+          exercise.templateId,
+          index
+        );
+      }
+    });
   }
-
-  get name() {
-    return this.#name;
+  
+  // Add a new exercise to the template
+  addExercise(name = 'Untitled', sets = 3) {
+    const exercise = new ExerciseTemplate(name, sets, '', null, this.#exercises.length);
+    this.#exercises = [...this.#exercises, exercise];
+    return exercise;
   }
-
-  set name(name) {
-    if (typeof name !== 'string') throw new Error('Name must be a string');
-    this.#name = name;
+  
+  // Remove an exercise at the specified index
+  removeExercise(index) {
+    if (index < 0 || index >= this.#exercises.length) {
+      throw new Error('Invalid exercise index');
+    }
+    
+    const newExercises = [...this.#exercises];
+    newExercises.splice(index, 1);
+    
+    // Update the order indices
+    newExercises.forEach((exercise, i) => {
+      exercise.orderIndex = i;
+    });
+    
+    this.#exercises = newExercises;
   }
-
-  get note() {
-    return this.#note;
+  
+  // Update a specific exercise
+  updateExercise(index, field, value) {
+    if (index < 0 || index >= this.#exercises.length) {
+      throw new Error('Invalid exercise index');
+    }
+    
+    // Create a new array to avoid reference issues
+    const newExercises = [...this.#exercises];
+    const exercise = newExercises[index];
+    
+    if (field === 'model' && value instanceof ExerciseTemplate) {
+      // Replace the entire model
+      value.orderIndex = index;
+      newExercises[index] = value;
+    } else {
+      // Update a specific field
+      exercise[field] = value;
+    }
+    
+    this.#exercises = newExercises;
   }
-
-  set note(note) {
-    if (typeof note !== 'string') throw new Error('Note must be a string');
-    this.#note = note;
+  
+  // Get exercise by index
+  getExercise(index) {
+    if (index < 0 || index >= this.#exercises.length) {
+      throw new Error('Invalid exercise index');
+    }
+    
+    return this.#exercises[index];
   }
-
+  
+  // Clone this workout template
   clone() {
-    return new Workout(this.name, this.note, this.exercises);
+    const clone = new WorkoutTemplate(this.name, this.notes);
+    clone.exercises = this.#exercises.map(exercise => exercise.clone());
+    return clone;
+  }
+  
+  // Convert to a plain object for database operations
+  toJSON() {
+    return {
+      name: this.name,
+      notes: this.notes,
+      exercises: this.exercises.map(exercise => exercise.toJSON())
+    };
   }
 }

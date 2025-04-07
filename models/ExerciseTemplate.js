@@ -1,32 +1,21 @@
 import BaseModel from './BaseModel';
+import Set from './Set';
 
 export default class ExerciseTemplate extends BaseModel {
-  #name;
-  #sets;
-  #reps;
-  #note;
-  #templateId;
-  #orderIndex;
 
-  constructor(name = '', sets = 3, reps = 10, note = '', templateId = null, orderIndex = 0) {
-    super();
+  #sets;
+  #orderIndex;
+  #setDetails = [];
+
+  constructor(name = '', sets = 3, note = '', orderIndex = 0) {
+    super(name, note);
     
     // Initialize private fields directly to avoid errors with setters
-    this.#name = typeof name === 'string' ? name : '';
-    this.#sets = Number(sets) || 3;
-    this.#reps = Number(reps) || 10;
-    this.#note = typeof note === 'string' ? note : '';
-    this.#templateId = templateId;
-    this.#orderIndex = Number(orderIndex) || 0;
-  }
-
-  get name() {
-    return this.#name;
-  }
-
-  set name(name) {
-    if (typeof name !== 'string') throw new Error('Name must be a string');
-    this.#name = name;
+    this.#sets = sets;
+    this.#orderIndex = orderIndex;
+    
+    // Initialize default set details
+    this.initializeSetDetails();
   }
 
   get sets() {
@@ -37,24 +26,36 @@ export default class ExerciseTemplate extends BaseModel {
     const setsNum = Number(sets);
     if (isNaN(setsNum) || setsNum < 0) throw new Error('Sets must be a positive number');
     this.#sets = setsNum;
+    
+    // Update set details if the number of sets changes
+    this.updateSetDetailsCount();
   }
   
-  get reps() {
-    return this.#reps;
-  }
-
-  set reps(reps) {
-    const repsNum = Number(reps);
-    if (isNaN(repsNum) || repsNum < 0) throw new Error('Reps must be a positive number');
-    this.#reps = repsNum;
+  // Get all set details
+  get setDetails() {
+    return this.#setDetails;
   }
   
-  get templateId() {
-    return this.#templateId;
-  }
-
-  set templateId(templateId) {
-    this.#templateId = templateId;
+  // Set all set details at once
+  set setDetails(details) {
+    if (!Array.isArray(details)) throw new Error('Set details must be an array');
+    
+    // Convert any plain objects to Set instances
+    this.#setDetails = details.map((detail, index) => {
+      if (detail instanceof Set) {
+        return detail;
+      } else {
+        return new Set(
+          detail.weight || 0,
+          detail.reps || 0,
+          index + 1,
+          detail.rpe || 0
+        );
+      }
+    });
+    
+    // Update the sets count to match the details
+    this.#sets = this.#setDetails.length;
   }
 
   get orderIndex() {
@@ -67,36 +68,104 @@ export default class ExerciseTemplate extends BaseModel {
     this.#orderIndex = indexNum;
   }
 
-  get note() {
-    return this.#note;
+  // Initialize set details based on the current sets count
+  initializeSetDetails() {
+    // Only initialize if empty
+    if (this.#setDetails.length === 0) {
+      this.#setDetails = Array(this.#sets).fill().map((_, i) => {
+        return new Set(0, 0, i + 1, 0);
+      });
+    }
   }
-
-  set note(note) {
-    if (typeof note !== 'string') throw new Error('Note must be a string');
-    this.#note = note;
+  
+  // Update set details count if the number of sets changes
+  updateSetDetailsCount() {
+    const currentCount = this.#setDetails.length;
+    
+    if (this.#sets > currentCount) {
+      // Add more sets
+      const newSets = Array(this.#sets - currentCount).fill().map((_, i) => {
+        return new Set(0, 0, currentCount + i + 1, 0);
+      });
+      this.#setDetails = [...this.#setDetails, ...newSets];
+    } else if (this.#sets < currentCount) {
+      // Remove excess sets
+      this.#setDetails = this.#setDetails.slice(0, this.#sets);
+    }
   }
-
+  
+  // Add a new set
+  addSet() {
+    const newSet = new Set(0, 0, this.#setDetails.length + 1, 0);
+    // Create a new array to avoid reference issues
+    this.#setDetails = [...this.#setDetails, newSet];
+    this.#sets = this.#setDetails.length;
+    return newSet;
+  }
+  
+  // Remove a set at the specified index
+  removeSet(index) {
+    if (index < 0 || index >= this.#setDetails.length) {
+      throw new Error('Invalid set index');
+    }
+    
+    // Create a new array to avoid reference issues
+    const newSetDetails = [...this.#setDetails];
+    newSetDetails.splice(index, 1);
+    
+    // Update set order numbers
+    newSetDetails.forEach((set, idx) => {
+      set.setOrder = idx + 1;
+    });
+    
+    this.#setDetails = newSetDetails;
+    this.#sets = this.#setDetails.length;
+  }
+  
+  // Update a specific set detail
+  updateSetDetail(setIndex, field, value) {
+    if (setIndex < 0 || setIndex >= this.#setDetails.length) {
+      throw new Error('Invalid set index');
+    }
+    
+    // Create a new array to avoid reference issues
+    const newSetDetails = [...this.#setDetails];
+    const set = newSetDetails[setIndex];
+    set[field] = value;
+    
+    this.#setDetails = newSetDetails;
+  }
+  
   // Convert to a plain object for database operations
   toJSON() {
     return {
       name: this.name,
       sets: this.sets,
-      reps: this.reps,
-      note: this.note,
+      notes: this.notes,
       template_id: this.templateId,
-      order_index: this.orderIndex
+      order_index: this.orderIndex,
+      set_details: this.#setDetails.map(set => ({
+        weight: set.weight,
+        reps: set.reps,
+        rpe: set.rpe,
+        set_order: set.setOrder
+      }))
     };
   }
-
+  
   // Create a copy of this exercise template
   clone() {
-    return new ExerciseTemplate(
+    const clone = new ExerciseTemplate(
       this.name,
       this.sets,
-      this.reps,
-      this.note,
+      this.notes,
       this.templateId,
       this.orderIndex
     );
+    
+    // Clone the set details
+    clone.setDetails = this.#setDetails.map(set => set.clone());
+    
+    return clone;
   }
 }
