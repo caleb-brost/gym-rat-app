@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import EditNameModal from './EditNameModal';
-import ExerciseTemplate from '../models/ExerciseTemplate';
+import Exercise from '../models/Exercise';
 
 export default function ExerciseItem({ 
   exercise, 
@@ -11,12 +11,12 @@ export default function ExerciseItem({
   removeExercise,
   isRemovable = true
 }) {
-  // Convert exercise to ExerciseTemplate if it's not already
+  // Convert exercise to Exercise if it's not already
   const [exerciseModel, setExerciseModel] = useState(() => {
-    if (exercise instanceof ExerciseTemplate) {
+    if (exercise instanceof Exercise) {
       return exercise;
     } else {
-      const newExercise = new ExerciseTemplate(
+      const newExercise = new Exercise(
         exercise.name || 'Untitled',
         Array.isArray(exercise.sets) ? exercise.sets.length : (exercise.sets || 1),
         '',  // notes
@@ -24,9 +24,10 @@ export default function ExerciseItem({
         exercise.orderIndex || index  
       );
       
-      // If exercise has set details, add them to the model
+      // If exercise has sets, add them to the model
       if (Array.isArray(exercise.sets)) {
-        newExercise.setDetails = exercise.sets;
+        newExercise.sets = exercise.sets;
+        console.log(newExercise.sets.length);
       }
       
       return newExercise;
@@ -37,9 +38,13 @@ export default function ExerciseItem({
   const [tempExerciseName, setTempExerciseName] = useState(exerciseModel.name || 'Untitled');
   const displayName = exerciseModel.name || 'Untitled';
   
-  // Use the set details from the exercise model
-  const [setDetails, setSetDetails] = useState(exerciseModel.setDetails);
-  const [setCount, setSetCount] = useState(setDetails.length);
+  // Use the sets from the exercise model
+  const [sets, setSets] = useState(() => {
+    // Ensure that we always have an array for sets
+    const exerciseSets = exerciseModel.sets;
+    return Array.isArray(exerciseSets) ? exerciseSets : [];
+  });
+  const [setCount, setSetCount] = useState(Array.isArray(sets) ? sets.length : 0);
   
   // Update the parent component when our model changes
   // Using a ref to track if we need to update the parent
@@ -62,13 +67,24 @@ export default function ExerciseItem({
   }, [exerciseModel, index, updateExercise]);
   
   // Update a specific set detail
-  const updateSetDetails = (setIndex, field, value) => {
+  const updateSet = (setIndex, field, value) => {
     try {
-      // Use the model's method to update the set detail
-      exerciseModel.updateSetDetail(setIndex, field, value);
+      // Create a copy of the current sets
+      const updatedSets = [...sets];
+      
+      // Update the specific field in the set
+      if (updatedSets[setIndex]) {
+        updatedSets[setIndex][field] = value;
+      }
+      
+      // Update the model with the modified sets
+      exerciseModel.sets = updatedSets;
       
       // Update our local state to reflect the change
-      setSetDetails([...exerciseModel.setDetails]);
+      setSets(updatedSets);
+      
+      // Notify parent component of the change
+      updateExercise(index, 'sets', updatedSets);
     } catch (error) {
       Alert.alert('Error', error.message);
     }
@@ -76,22 +92,50 @@ export default function ExerciseItem({
   
   // Add a new set
   const addSet = () => {
-    // Use the model's method to add a set
-    exerciseModel.addSet();
+    // Create a copy of the current sets
+    const updatedSets = [...sets];
+    
+    // Add a new set with default values
+    updatedSets.push({
+      weight: 0,
+      reps: 0,
+      rpe: 0,
+      set_order: updatedSets.length + 1
+    });
+    
+    // Update the model with the modified sets
+    exerciseModel.sets = updatedSets;
     
     // Update our local state to reflect the change
-    setSetDetails([...exerciseModel.setDetails]);
-    setSetCount(exerciseModel.setDetails.length);
+    setSets(updatedSets);
+    setSetCount(updatedSets.length);
+    
+    // Notify parent component of the change
+    updateExercise(index, 'sets', updatedSets);
   };
   
   // Remove a set
   const removeSet = (setIndex) => {
-    // Use the model's method to remove a set
-    exerciseModel.removeSet(setIndex);
+    // Create a copy of the current sets
+    const updatedSets = [...sets];
+    
+    // Remove the set at the specified index
+    updatedSets.splice(setIndex, 1);
+    
+    // Update set_order for remaining sets
+    updatedSets.forEach((set, idx) => {
+      set.set_order = idx + 1;
+    });
+    
+    // Update the model with the modified sets
+    exerciseModel.sets = updatedSets;
     
     // Update our local state to reflect the change
-    setSetDetails([...exerciseModel.setDetails]);
-    setSetCount(exerciseModel.setDetails.length);
+    setSets(updatedSets);
+    setSetCount(updatedSets.length);
+    
+    // Notify parent component of the change
+    updateExercise(index, 'sets', updatedSets);
   };
   // Save the exercise name from the modal
   const saveExerciseName = () => {
@@ -149,7 +193,7 @@ export default function ExerciseItem({
       />
       
       <View style={styles.setsContainer}>
-        {setDetails.map((set, setIndex) => (
+        {Array.isArray(sets) && sets.map((set, setIndex) => (
           <View key={setIndex} style={styles.setItem}>
             <View style={styles.setHeader}>
               <Text style={styles.setNumber}>Set {set.setOrder}</Text>
@@ -168,7 +212,7 @@ export default function ExerciseItem({
                 <TextInput
                   style={styles.numberInput}
                   value={set.weight.toString()}
-                  onChangeText={(value) => updateSetDetails(setIndex, 'weight', parseInt(value) || 0)}
+                  onChangeText={(value) => updateSet(setIndex, 'weight', parseInt(value) || 0)}
                   keyboardType="number-pad"
                   placeholder="0"
                 />
@@ -179,7 +223,7 @@ export default function ExerciseItem({
                 <TextInput
                   style={styles.numberInput}
                   value={set.reps.toString()}
-                  onChangeText={(value) => updateSetDetails(setIndex, 'reps', parseInt(value) || 0)}
+                  onChangeText={(value) => updateSet(setIndex, 'reps', parseInt(value) || 0)}
                   keyboardType="number-pad"
                   placeholder="0"
                 />
@@ -190,7 +234,7 @@ export default function ExerciseItem({
                 <TextInput
                   style={styles.numberInput}
                   value={set.rpe > 0 ? set.rpe.toString() : ''}
-                  onChangeText={(value) => updateSetDetails(setIndex, 'rpe', parseInt(value) || 0)}
+                  onChangeText={(value) => updateSet(setIndex, 'rpe', parseInt(value) || 0)}
                   keyboardType="number-pad"
                   placeholder="0-10"
                   maxLength={2}

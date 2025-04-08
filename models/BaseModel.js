@@ -11,16 +11,15 @@ export default class BaseModel {
   static #MAX_DURATION = 1000; // temp value
 
   #name;
-  #notes;
+  #note;
 
-  constructor(name, notes = '') {
+  constructor(name, note = '') {
     this.name = name;
-    this.notes = notes;
+    this.note = note;
   }
 
   set name(name) {
-    if (!name) throw new Error('Name cannot be empty');
-    else if (name.length > BaseModel.#MAX_NAME_LENGTH && typeof name !== 'string') throw new Error('Name must be a string that does not exceed max character length of ' + BaseModel.#MAX_NAME_LENGTH);
+    if (name.length > BaseModel.#MAX_NAME_LENGTH && typeof name !== 'string') throw new Error('Name must be a string that does not exceed max character length of ' + BaseModel.#MAX_NAME_LENGTH);
     this.#name = name;
   }
 
@@ -28,16 +27,16 @@ export default class BaseModel {
     return this.#name;
   }
 
-  set notes(notes) {
-    if (notes.length > BaseModel.#MAX_NOTES_LENGTH && typeof notes !== 'string') throw new Error('Notes must be a string that does not exceed max character length of ' + BaseModel.#MAX_NOTES_LENGTH);
-    this.#notes = notes;
+  set note(note) {
+    if (note.length > BaseModel.#MAX_NOTES_LENGTH && typeof note !== 'string') throw new Error('Notes must be a string that does not exceed max character length of ' + BaseModel.#MAX_NOTES_LENGTH);
+    this.#note = note;
   }
 
-  get notes() {
-    return this.#notes;
+  get note() {
+    return this.#note;
   }
 
   clone() {
-    return new BaseModel(this.#name, this.#notes);
+    return new BaseModel(this.#name, this.#note);
   }
 }

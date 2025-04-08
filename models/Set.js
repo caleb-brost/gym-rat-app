@@ -52,6 +52,9 @@ export default class Set {
     return this.#setOrder;
   }
 
+  map() {
+    console.log("MAP!!");
+  }
   clone() {
     return new Set(this.#weight, this.#reps, this.#setOrder, this.#rpe);
   }
