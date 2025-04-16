@@ -1,11 +1,9 @@
 export default class BaseModel {
   static #MAX_NAME_LENGTH = 50; // temp value
   static #MAX_NOTES_LENGTH = 255; // temp value
-  static #MAX_REST_TIME = 1800; // temp value
-  static #MAX_WORKOUT_DURATION = 86400; // temp value
-  static #MAX_EXERCISES = 50; // temp value
-  static #MAX_SETS = 50; // temp value
-  static #MAX_INTERVALS = 50; // temp value
+  static #MAX_EXERCISES = 1000; // temp value
+  static #MAX_SETS = 100; // temp value
+  static #MAX_INTERVALS = 100; // temp value
   static #MAX_RPE = 10; // temp value
   static #MAX_DISTANCE = 1000; // temp value
   static #MAX_DURATION = 1000; // temp value

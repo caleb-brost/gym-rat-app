@@ -1,7 +1,9 @@
+import supabase from '../db/supabaseClient.js';
+
 export default class Set {
-  #MAX_WEIGHT = 1000; // temp value
+  #MAX_WEIGHT = 10000; // temp value
   #MAX_REPS = 1000; // temp value
-  #MAX_SET_ORDER = 50; // temp value
+  #MAX_SET_ORDER = 100; // temp value
   #MAX_RPE = 10; // temp value
 
   #weight;
@@ -52,9 +54,25 @@ export default class Set {
     return this.#setOrder;
   }
 
-  map() {
-    console.log("MAP!!");
+  async saveToDatabase(exerciseId, exerciseTemplateId, setIsLoading) {
+    const { data: set, error: setError } = await supabase
+      .from('sets')
+      .insert({
+        exercise_id: exerciseId,
+        exercise_template_id: exerciseTemplateId,
+        weight: this.weight,
+        reps: this.reps,
+        set_order: this.setOrder,
+        rpe: this.rpe
+      })
+      .select();
+      
+    if (setError) throw setError;
+
+    setIsLoading(false);
+    return true;
   }
+
   clone() {
     return new Set(this.#weight, this.#reps, this.#setOrder, this.#rpe);
   }

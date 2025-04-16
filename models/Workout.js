@@ -1,8 +1,6 @@
 import BaseModel from './BaseModel.js';
 import Exercise from './Exercise.js';
-import Set from './Set.js';
 import supabase from '../db/supabaseClient.js';
-import { Alert } from 'react-native';
 import { router } from 'expo-router';
 
 export default class Workout extends BaseModel {
@@ -74,27 +72,19 @@ export default class Workout extends BaseModel {
     if (!Array.isArray(exercises)) throw new Error('Exercises must be an array');
     
     // Convert any plain objects to Exercise instances
-    this.#exercises = exercises.map((exercise, index) => {
+    this.#exercises = exercises.map((exercise) => {
       if (exercise instanceof Exercise) {
-        // Update the order index
-        exercise.orderIndex = index;
         return exercise;
       } else {
         // Create a new Exercise from the plain object
-        return new Exercise(
-          exercise.name || 'Untitled',
-          Array.isArray(exercise.sets) ? exercise.sets.length : (exercise.sets || 1),
-          exercise.notes || '',
-          exercise.templateId,
-          index
-        );
+        return new Exercise(exercise.name, exercise.sets, exercise.intervals, exercise.restTime, exercise.notes, exercise.orderIndex);
       }
     });
   }
   
   // Add a new exercise to the template
-  addExercise(name = 'Untitled', sets) {
-    const exercise = new Exercise(name, sets, '', null, this.#exercises.length);
+  addExercise(name = 'Untitled', sets = []) {
+    const exercise = new Exercise(name, sets, [], 0, '', this.#exercises.length + 1);
     this.#exercises = [...this.#exercises, exercise];
     return exercise;
   }
@@ -104,16 +94,8 @@ export default class Workout extends BaseModel {
     if (index < 0 || index >= this.#exercises.length) {
       throw new Error('Invalid exercise index');
     }
-    
-    const newExercises = [...this.#exercises];
-    newExercises.splice(index, 1);
-    
-    // Update the order indices
-    newExercises.forEach((exercise, i) => {
-      exercise.orderIndex = i;
-    });
-    
-    this.#exercises = newExercises;
+
+    this.#exercises = this.#exercises.filter((_, i) => i !== index);
   }
   
   // Update a specific exercise
@@ -121,21 +103,14 @@ export default class Workout extends BaseModel {
     if (index < 0 || index >= this.#exercises.length) {
       throw new Error('Invalid exercise index');
     }
-    
-    // Create a new array to avoid reference issues
-    const newExercises = [...this.#exercises];
-    const exercise = newExercises[index];
-    
-    if (field === 'model' && value instanceof Exercise) {
-      // Replace the entire model
-      value.orderIndex = index;
-      newExercises[index] = value;
+
+    if (field === 'model') {
+      this.#exercises[index] = value;
     } else {
-      // Update a specific field
-      exercise[field] = value;
+      this.#exercises[index][field] = value;
     }
     
-    this.#exercises = newExercises;
+
   }
   
   // Get exercise by index
@@ -151,7 +126,15 @@ export default class Workout extends BaseModel {
   async saveToDatabase(setIsLoading) {
     // Validate inputs
     if (!this.name.trim()) {
-      Alert.alert('Error', 'Please enter a template name');
+      alert('Please enter a template name');
+      return false;
+    }
+    if (!this.exercises.length) {
+      alert('Please add at least one exercise');
+      return false;
+    }
+    if (!this.exercises[0].sets.length) {
+      alert('Please add at least one set to each exercise');
       return false;
     }
 
@@ -165,72 +148,40 @@ export default class Workout extends BaseModel {
         throw new Error('You must be logged in to create a template');
       }
 
-      console.log('Saving template for user:', user.id);
-
       // Insert the workout template into the database
       const { data: template, error: templateError } = await supabase
-        .from('workout_templates')
-        .insert([
-          { 
-            creator_id: user.id,
-            title: this.name,
-            note: this.notes,
-          }
-        ])
+        .from('workouts')
+        .insert({
+          user_id: user.id,
+          title: this.name,
+          notes: this.notes,
+        })
         .select();
       
       if (templateError) throw templateError;
+
+      // get newly created workout template id
+      
+      const templateId = template[0].template_id; // test this
+      const workoutId = template[0].id;
       
       // Insert exercises for the template
+      if (!this.#exercises) throw new Error('No exercises found');
+      if (!this.#exercises[0].sets) throw new Error('No sets found');
+
       for (const exercise of this.#exercises) {
-        const { error: exerciseError } = await supabase
-          .from('exercise_templates')
-          .insert({
-            template_id: template[0].id, // check this
-            name: exercise.name,
-            sets: exercise.sets,
-            note: exercise.notes,
-            order_index: exercise.orderIndex,
-            // Store the full set details as JSON
-            set_details: JSON.stringify((() => {
-              // Get the sets from the exercise
-              const exerciseSets = exercise.sets;
-              
-              // If sets is not an array or is undefined, return an empty array
-              if (!exerciseSets || !Array.isArray(exerciseSets)) {
-                return [];
-              }
-              
-              // Map the sets to the correct format
-              return exerciseSets.map(set => {
-                // If it's a Set instance, extract its properties
-                if (set instanceof Set) {
-                  return {
-                    weight: set.weight,
-                    reps: set.reps,
-                    rpe: set.rpe,
-                    set_order: set.setOrder
-                  };
-                }
-                // Otherwise, use the object as is
-                return set;
-              });
-            })())
-          });
-        
-        if (exerciseError) throw exerciseError;
+        console.log('Saving exercise:', exercise.name, 'order:', exercise.orderIndex);
+
+        // Save the exercise to the database
+        await exercise.saveToDatabase(templateId, workoutId, setIsLoading);
       }
 
-      Alert.alert(
-        'Success', 
-        'Workout template created successfully!',
-        [{ text: 'OK', onPress: () => router.back() }]
-      );
+      alert('Workout template created successfully!');
       
       return true;
     } catch (error) {
       console.error('Error creating template:', error);
-      Alert.alert('Error', error.message || 'Failed to create template');
+      alert('Failed to create template');
       return false;
     } finally {
       if (setIsLoading) setIsLoading(false);
