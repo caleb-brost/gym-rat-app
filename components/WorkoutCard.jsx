@@ -1,10 +1,10 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 
-export default function WorkoutCard({ workout, handleStartWorkout, buttonText = 'Start Workout' }) {
+export default function WorkoutCard({ workout, handleStartWorkout }) {
   return (
     <View style={styles.templateCard}>
-      <Text style={styles.templateName}>{workout.name}</Text>
+      <Text style={styles.templateName}>{workout.title}</Text>
       <View style={styles.exerciseList}>
         {workout.exercises && workout.exercises.map((exercise, index) => (
           <Text key={index} style={styles.exercise}>
@@ -16,7 +16,7 @@ export default function WorkoutCard({ workout, handleStartWorkout, buttonText = 
         style={styles.startButton}
         onPress={() => handleStartWorkout(workout)}
       >
-        <Text style={styles.startButtonText}>{buttonText}</Text>
+        <Text style={styles.startButtonText}>{'Start Workout'}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -24,11 +24,10 @@ export default function WorkoutCard({ workout, handleStartWorkout, buttonText = 
 
 // This is a helper function to use with FlatList
 // Usage example: <FlatList data={workouts} renderItem={renderWorkoutCard(handleStartWorkout)} />
-export const renderWorkoutCard = (handleStartWorkout, buttonText) => ({ item }) => (
+export const renderWorkoutCard = (handleStartWorkout) => ({ item }) => (
   <WorkoutCard 
     workout={item} 
     handleStartWorkout={handleStartWorkout}
-    buttonText={buttonText}
   />
 );
 
