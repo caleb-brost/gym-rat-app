@@ -76,3 +76,20 @@ GymRat/
 ├── package-lock.json
 ├── tsconfig.json
 └── README.md
+
+## Supabase types
+
+- Place `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, and `SUPABASE_ACCESS_TOKEN` in `.env` (or export them before running the script).
+- Optionally set `SUPABASE_SCHEMAS` (defaults to `public`) to include additional schemas.
+- Run `npm run supabase:types` to regenerate `types/supabase.ts`.
+
+## Data access layers
+
+- `db/supabaseClient.ts` – single typed Supabase client that reads credentials from `.env`.
+- `lib/supabase/errors.ts` – helper for normalising Supabase/Postgrest error messages.
+- `features/exercises/types.ts` – shared Exercise DTO and payload types.
+- `features/exercises/api.ts` – Supabase reads/writes (`list`, `create`) for the exercises domain.
+- `features/exercises/hooks.ts` – React hook exposing `exercises`, loading/error state, and `createExercise`.
+- `features/exercises/components/ExerciseSearch.tsx` – search container that wires the search bar and list together.
+- `features/exercises/components/ExerciseSearchBar.tsx` – reusable search input.
+- `features/exercises/components/ExerciseList.tsx` / `ExerciseCard.tsx` – results list and individual row presentation.
