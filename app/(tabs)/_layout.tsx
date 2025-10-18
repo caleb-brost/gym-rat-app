@@ -1,6 +1,5 @@
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { Tabs } from "expo-router";
-import { StyleSheet } from 'react-native';
 
 function TabBarIcon({ name, color }: { name: string; color: string }) {
   return <FontAwesome6 name={name} size={24} style={{ marginBottom: -3 }} color={color} />;
@@ -28,13 +27,13 @@ export default function TabsLayout() {
           tabBarIcon: ({ color }) => <TabBarIcon name="plus" color={color} />,
         }}
         />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: "Profile",
+          tabBarIcon: ({ color }) => <TabBarIcon name="user" color={color} />,
+        }}
+        />
     </Tabs>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#a44848ff', 
-  },
-});

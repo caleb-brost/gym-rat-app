@@ -88,8 +88,11 @@ GymRat/
 - `db/supabaseClient.ts` – single typed Supabase client that reads credentials from `.env`.
 - `lib/supabase/errors.ts` – helper for normalising Supabase/Postgrest error messages.
 - `features/exercises/types.ts` – shared Exercise DTO and payload types.
-- `features/exercises/api.ts` – Supabase reads/writes (`list`, `create`) for the exercises domain.
-- `features/exercises/hooks.ts` – React hook exposing `exercises`, loading/error state, and `createExercise`.
+- `features/exercises/api.ts` – Supabase reads/writes (`list`, `create`, `update`, `delete`, `get`) for the exercises domain.
+- `features/exercises/hooks.ts` – React hook exposing fetched exercises plus create/update/delete helpers with loading state.
 - `features/exercises/components/ExerciseSearch.tsx` – search container that wires the search bar and list together.
 - `features/exercises/components/ExerciseSearchBar.tsx` – reusable search input.
 - `features/exercises/components/ExerciseList.tsx` / `ExerciseCard.tsx` – results list and individual row presentation.
+- `features/exercises/components/ExerciseFormModal.tsx` – shared modal used for creating and editing exercises.
+- `features/auth/api.ts` / `hooks.ts` / `types.ts` – Supabase auth helpers shared by sign-in, sign-up, and profile screens.
+- Avatar uploads expect a Supabase storage bucket named `avatars` with policies that let users read/write their own file (see `features/auth/api.ts`) and `expo-image-picker` installed in the Expo app.

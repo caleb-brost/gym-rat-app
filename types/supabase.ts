@@ -22,7 +22,6 @@ export type Database = {
           created_at: string | null
           equipment: string[] | null
           id: string
-          is_custom: boolean | null
           name: string
           notes: string | null
           target_muscles: string[] | null
@@ -33,7 +32,6 @@ export type Database = {
           created_at?: string | null
           equipment?: string[] | null
           id?: string
-          is_custom?: boolean | null
           name: string
           notes?: string | null
           target_muscles?: string[] | null
@@ -44,21 +42,12 @@ export type Database = {
           created_at?: string | null
           equipment?: string[] | null
           id?: string
-          is_custom?: boolean | null
           name?: string
           notes?: string | null
           target_muscles?: string[] | null
           user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "exercises_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       sets: {
         Row: {
@@ -114,18 +103,21 @@ export type Database = {
       users: {
         Row: {
           auth_id: string | null
+          avatar_url: string | null
           created_at: string | null
           id: string
           username: string
         }
         Insert: {
           auth_id?: string | null
+          avatar_url?: string | null
           created_at?: string | null
           id?: string
           username: string
         }
         Update: {
           auth_id?: string | null
+          avatar_url?: string | null
           created_at?: string | null
           id?: string
           username?: string
@@ -157,15 +149,7 @@ export type Database = {
           notes?: string | null
           user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "workouts_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Views: {

@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import type { Exercise } from '../types';
 import { useExerciseSearch } from '../hooks';
+import type { Exercise } from '../types';
 import { ExerciseList } from './ExerciseList';
 import { ExerciseSearchBar } from './ExerciseSearchBar';
 
@@ -22,5 +22,5 @@ export const ExerciseSearch: React.FC<ExerciseSearchProps> = ({ exercises, onSel
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#fff' },
+  container: { flex: 1, padding: 16, backgroundColor: '#f2f2f2' },
 });

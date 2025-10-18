@@ -1,14 +1,18 @@
+import { supabase } from '@/db/supabaseClient';
+import { getSupabaseErrorMessage } from '@/lib/supabase/errors';
 import Fuse from 'fuse.js';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { getSupabaseErrorMessage } from '@/lib/supabase/errors';
-import { createExercise, listExercises } from './api';
+import { createExercise, deleteExercise, listExercises, updateExercise } from './api';
 import type { Exercise, NewExercisePayload } from './types';
+import { sortExercisesByName } from './utils';
 
 export const useExercises = () => {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -33,10 +37,21 @@ export const useExercises = () => {
     async (payload: NewExercisePayload) => {
       setCreating(true);
       try {
-        const exercise = await createExercise(payload);
-        setExercises((prev) =>
-          [...prev, exercise].sort((a, b) => a.name.localeCompare(b.name)),
-        );
+        const {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession();
+
+        if (sessionError) throw sessionError;
+
+        payload.userId = session?.user?.id.trim();
+
+        if (!payload.userId) {
+          throw new Error('You must be signed in to create an exercise.');
+        }
+
+        const exercise = await createExercise({ ...payload});
+        setExercises((prev) => sortExercisesByName([...prev, exercise]));
         setError(null);
         return exercise;
       } finally {
@@ -46,13 +61,48 @@ export const useExercises = () => {
     [],
   );
 
+  const handleUpdate = useCallback(
+    async (id: string, payload: Partial<NewExercisePayload>) => {
+      setUpdatingId(id);
+      try {
+        const updated = await updateExercise(id, payload);
+        setExercises((prev) =>
+          sortExercisesByName(
+            prev.map((exercise) => (exercise.id === id ? updated : exercise)),
+          ),
+        );
+        setError(null);
+        return updated;
+      } finally {
+        setUpdatingId(null);
+      }
+    },
+    [],
+  );
+
+  const handleDelete = useCallback(
+      async (id: string) => {
+    setDeletingId(id);
+    try {
+      await deleteExercise(id);
+      setExercises((prev) => prev.filter((exercises) => exercises.id !== id));
+      setError(null);
+    } finally {
+      setDeletingId(null);
+    }
+  }, []);
+
   return {
     exercises,
     loading,
     error,
     creating,
+    updatingId,
+    deletingId,
     refresh,
     createExercise: handleCreate,
+    updateExercise: handleUpdate,
+    deleteExercise: handleDelete,
   };
 };
 

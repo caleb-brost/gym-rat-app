@@ -5,7 +5,6 @@ export interface Exercise {
   targetMuscles: string[];
   notes: string | null;
   equipment: string[] | null;
-  isCustom: boolean | null;
   createdAt: string | null;
   userId: string | null;
 }

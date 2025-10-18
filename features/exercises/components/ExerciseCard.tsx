@@ -27,10 +27,10 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
+    backgroundColor: '#f2f2f2',
     paddingVertical: 12,
     paddingHorizontal: 16,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#d5d5d5ff',
     borderBottomWidth: 1,
   },
   textContainer: {

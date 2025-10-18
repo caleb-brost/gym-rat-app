@@ -1,93 +1,141 @@
-import React, { useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { ExerciseSearch } from '@/features/exercises/components/ExerciseSearch';
-import { getSupabaseErrorMessage } from '@/lib/supabase/errors';
+import { ExerciseFormModal, ExerciseSearch } from '@/features/exercises/components';
 import { useExercises } from '@/features/exercises/hooks';
-import type { Exercise, NewExercisePayload } from '@/features/exercises/types';
+import type { Exercise } from '@/features/exercises/types';
+import { toExercisePayload } from '@/features/exercises/utils';
+import { getSupabaseErrorMessage } from '@/lib/supabase/errors';
+import React, { useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-const parseMuscles = (value: string) =>
-  value
-    .split(',')
-    .map((muscle) => muscle.trim())
-    .filter(Boolean);
+const emptyStateMessage = 'No exercises found yet. Create one to get started.';
 
-const defaultExerciseMessage = 'No exercises found yet. Create one to get started.';
+type ModalState =
+  | { visible: false }
+  | { visible: true; mode: 'create'; exercise: null }
+  | { visible: true; mode: 'edit'; exercise: Exercise };
+
+const initialModalState: ModalState = { visible: false };
 
 export default function ExercisesScreen() {
-  const { exercises, loading, error, creating, createExercise } = useExercises();
-  const [isModalVisible, setModalVisible] = useState(false);
-  const [formName, setFormName] = useState('');
-  const [formCategory, setFormCategory] = useState('');
-  const [formMuscles, setFormMuscles] = useState('');
-  const [formError, setFormError] = useState<string | null>(null);
-  const [formGlobalError, setFormGlobalError] = useState<string | null>(null);
+  const {
+    exercises,
+    loading,
+    error,
+    creating,
+    updatingId,
+    deletingId,
+    createExercise,
+    updateExercise,
+    deleteExercise,
+  } = useExercises();
 
-  const resetForm = () => {
-    setFormName('');
-    setFormCategory('');
-    setFormMuscles('');
-    setFormError(null);
-    setFormGlobalError(null);
-  };
+  const [modalState, setModalState] = useState<ModalState>(initialModalState);
+  const [modalError, setModalError] = useState<string | null>(null);
 
-  const closeModal = () => {
-    if (creating) {
-      return;
+  const selectedExercise = useMemo(
+    () => (modalState.visible && modalState.mode === 'edit' ? modalState.exercise : null),
+    [modalState],
+  );
+
+  const isSubmitting = useMemo(() => {
+    if (!modalState.visible) {
+      return false;
     }
 
-    setModalVisible(false);
-    resetForm();
+    if (modalState.mode === 'create') {
+      return creating;
+    }
+
+    return selectedExercise ? updatingId === selectedExercise.id : false;
+  }, [modalState, creating, updatingId, selectedExercise]);
+
+  const isDeleting = useMemo(() => {
+    if (!modalState.visible || modalState.mode !== 'edit' || !selectedExercise) {
+      return false;
+    }
+    return deletingId === selectedExercise.id;
+  }, [modalState, deletingId, selectedExercise]);
+
+  const closeModal = () => {
+    setModalState(initialModalState);
+    setModalError(null);
   };
 
   const handleNewExercise = () => {
-    resetForm();
-    setModalVisible(true);
+    setModalState({ visible: true, mode: 'create', exercise: null });
+    setModalError(null);
   };
 
-  const handleSelect = (exercise: Exercise) => {
-    console.log('Selected exercise:', exercise.name);
+  const handleSelectExercise = (exercise: Exercise) => {
+    setModalState({ visible: true, mode: 'edit', exercise });
+    setModalError(null);
   };
 
-  const handleCreateExercise = async () => {
-    const name = formName.trim();
+  const handleSubmit = async (values: {
+    name: string;
+    category: string;
+    targetMuscles: string[];
+    equipment: string[];
+    notes: string;
+  }) => {
+    setModalError(null);
 
-    if (!name) {
-      setFormError('Name is required.');
+    const payload = toExercisePayload(values, {
+      includeEmpty: modalState.visible && modalState.mode === 'edit',
+    });
+
+    try {
+      if (modalState.visible && modalState.mode === 'edit' && modalState.exercise) {
+        await updateExercise(modalState.exercise.id, payload);
+      } else {
+        await createExercise(payload);
+      }
+
+      closeModal();
+    } catch (submitError) {
+      setModalError(getSupabaseErrorMessage(submitError, 'Unable to save exercise.'));
+    }
+  };
+
+  const handleConfirmDelete = () => {
+    if (!selectedExercise) {
       return;
     }
 
-    const category = formCategory.trim();
-    const targetMuscles = parseMuscles(formMuscles);
+    if (Platform.OS === 'web') {
+      handleDelete();
+      return;
+    }
 
-    setFormError(null);
-    setFormGlobalError(null);
+    Alert.alert(
+      'Delete exercise',
+      `Are you sure you want to delete "${selectedExercise.name}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: handleDelete,
+        },
+      ],
+    );
+  };
 
-    const payload: NewExercisePayload = {
-      name,
-      category: category || undefined,
-      targetMuscles: targetMuscles.length > 0 ? targetMuscles : undefined,
-    };
+  const handleDelete = async () => {
+    if (!selectedExercise) {
+      return;
+    }
+
+    setModalError(null);
 
     try {
-      await createExercise(payload);
-      setModalVisible(false);
-      resetForm();
-    } catch (createError) {
-      setFormGlobalError(getSupabaseErrorMessage(createError, 'Unable to create exercise.'));
+      await deleteExercise(selectedExercise.id);
+      closeModal();
+    } catch (deleteError) {
+      setModalError(getSupabaseErrorMessage(deleteError, 'Unable to delete exercise.'));
     }
   };
 
-  let content: React.ReactNode;
+  let content: React.ReactNode = null;
 
   if (loading) {
     content = (
@@ -104,11 +152,11 @@ export default function ExercisesScreen() {
   } else if (exercises.length === 0) {
     content = (
       <View style={styles.centerContent}>
-        <Text style={styles.emptyText}>{defaultExerciseMessage}</Text>
+        <Text style={styles.emptyText}>{emptyStateMessage}</Text>
       </View>
     );
   } else {
-    content = <ExerciseSearch exercises={exercises} onSelect={handleSelect} />;
+    content = <ExerciseSearch exercises={exercises} onSelect={handleSelectExercise} />;
   }
 
   return (
@@ -121,76 +169,28 @@ export default function ExercisesScreen() {
 
       {content}
 
-      <Modal transparent visible={isModalVisible} animationType="slide" onRequestClose={closeModal}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.modalKeyboard}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalCard}>
-              <Text style={styles.modalTitle}>New Exercise</Text>
-
-              <TextInput
-                style={styles.input}
-                placeholder="Name"
-                value={formName}
-                onChangeText={setFormName}
-                autoCapitalize="words"
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Category (optional)"
-                value={formCategory}
-                onChangeText={setFormCategory}
-                autoCapitalize="words"
-              />
-              <TextInput
-                style={[styles.input, styles.multilineInput]}
-                placeholder="Target muscles (comma separated)"
-                value={formMuscles}
-                onChangeText={setFormMuscles}
-                multiline
-              />
-
-              {formError ? <Text style={styles.formError}>{formError}</Text> : null}
-              {formGlobalError ? (
-                <Text style={styles.formError}>{formGlobalError}</Text>
-              ) : null}
-
-              <View style={styles.modalActions}>
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.cancelButton]}
-                  onPress={closeModal}
-                  disabled={creating}
-                >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.actionButton,
-                    styles.saveButton,
-                    creating && styles.disabledButton,
-                  ]}
-                  onPress={handleCreateExercise}
-                  disabled={creating}
-                >
-                  {creating ? (
-                    <ActivityIndicator color="#fff" size="small" />
-                  ) : (
-                    <Text style={styles.saveButtonText}>Save</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+      <ExerciseFormModal
+        visible={modalState.visible}
+        mode={modalState.visible ? modalState.mode : 'create'}
+        initialExercise={selectedExercise ?? undefined}
+        submitting={isSubmitting}
+        deleting={isDeleting}
+        error={modalError}
+        onClose={closeModal}
+        onSubmit={handleSubmit}
+        onDelete={modalState.visible && modalState.mode === 'edit' ? handleConfirmDelete : undefined}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#fff' },
+  root: {
+    flex: 1,
+    backgroundColor: '#f2f2f2',
+    paddingTop: 10,
+    paddingHorizontal: 24,
+  },
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   buttonText: {
-    color: 'white',
+    color: '#fff',
     fontSize: 14,
     fontWeight: '500',
   },
@@ -222,77 +222,5 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     paddingHorizontal: 24,
-  },
-  modalKeyboard: {
-    flex: 1,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.35)',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  modalCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 16,
-    color: '#222',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    marginBottom: 12,
-    color: '#222',
-  },
-  multilineInput: {
-    minHeight: 80,
-    textAlignVertical: 'top',
-  },
-  formError: {
-    color: '#d14343',
-    fontSize: 13,
-    marginBottom: 12,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-  },
-  actionButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-  },
-  cancelButton: {
-    backgroundColor: '#f0f0f0',
-    marginRight: 12,
-  },
-  saveButton: {
-    backgroundColor: '#007AFF',
-  },
-  disabledButton: {
-    opacity: 0.6,
-  },
-  cancelButtonText: {
-    color: '#333',
-    fontSize: 15,
-    fontWeight: '500',
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '600',
   },
 });
