@@ -1,7 +1,11 @@
 ## Start Project
-npx expo start
+`npx expo start`
 
-GymRat/
+
+# Generate Supabase Types
+`npx supabase gen types typescript --project-id rkdgcxrqascpfnidrayg > ./types/supabase.ts`
+`npx supabase login`
+
 ├── app/                             # Expo Router navigation
 │   ├── (auth)/                      # Auth routes group
 │   │   ├── login.tsx
