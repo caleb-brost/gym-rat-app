@@ -13,7 +13,7 @@ export interface ExerciseFormValues {
   name: string;
   category: string;
   targetMuscles: string[];
-  equipment: string[];
+  equipment: string;
   notes: string;
 }
 
@@ -33,12 +33,7 @@ export const toExercisePayload = (
       : options.includeEmpty
         ? []
         : undefined,
-  equipment:
-    values.equipment.length > 0
-      ? values.equipment
-      : options.includeEmpty
-        ? []
-        : undefined,
+  equipment: values.equipment ? values.equipment : undefined,
   notes:
     values.notes
       ? values.notes

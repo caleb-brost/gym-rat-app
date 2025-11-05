@@ -1,9 +1,11 @@
+import { useAuthSession } from '@/features/auth/hooks';
 import { ExerciseFormModal, ExerciseSearch } from '@/features/exercises/components';
+import { ADMIN_USER_ID } from '@/features/exercises/api';
 import { useExercises } from '@/features/exercises/hooks';
 import type { Exercise } from '@/features/exercises/types';
 import { toExercisePayload } from '@/features/exercises/utils';
 import { getSupabaseErrorMessage } from '@/lib/supabase/errors';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const emptyStateMessage = 'No exercises found yet. Create one to get started.';
@@ -11,11 +13,12 @@ const emptyStateMessage = 'No exercises found yet. Create one to get started.';
 type ModalState =
   | { visible: false }
   | { visible: true; mode: 'create'; exercise: null }
-  | { visible: true; mode: 'edit'; exercise: Exercise };
+  | { visible: true; mode: 'edit'; exercise: Exercise; canEdit: boolean };
 
 const initialModalState: ModalState = { visible: false };
 
 export default function ExercisesScreen() {
+  const { userId } = useAuthSession();
   const {
     exercises,
     loading,
@@ -31,6 +34,18 @@ export default function ExercisesScreen() {
   const [modalState, setModalState] = useState<ModalState>(initialModalState);
   const [modalError, setModalError] = useState<string | null>(null);
 
+  const showAdminOnlyAlert = useCallback(() => {
+    const message = 'Default exercises can only be modified by the admin.';
+
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && typeof window.alert === 'function') {
+        window.alert(message);
+      }
+    } else {
+      Alert.alert('Admin only', message);
+    }
+  }, []);
+
   const selectedExercise = useMemo(
     () => (modalState.visible && modalState.mode === 'edit' ? modalState.exercise : null),
     [modalState],
@@ -45,11 +60,18 @@ export default function ExercisesScreen() {
       return creating;
     }
 
+    if (modalState.mode === 'edit' && !modalState.canEdit) {
+      return false;
+    }
+
     return selectedExercise ? updatingId === selectedExercise.id : false;
   }, [modalState, creating, updatingId, selectedExercise]);
 
   const isDeleting = useMemo(() => {
     if (!modalState.visible || modalState.mode !== 'edit' || !selectedExercise) {
+      return false;
+    }
+    if (!modalState.canEdit) {
       return false;
     }
     return deletingId === selectedExercise.id;
@@ -66,7 +88,11 @@ export default function ExercisesScreen() {
   };
 
   const handleSelectExercise = (exercise: Exercise) => {
-    setModalState({ visible: true, mode: 'edit', exercise });
+    const canEdit =
+      !!userId &&
+      (userId === ADMIN_USER_ID || exercise.userId === userId);
+
+    setModalState({ visible: true, mode: 'edit', exercise, canEdit });
     setModalError(null);
   };
 
@@ -74,7 +100,7 @@ export default function ExercisesScreen() {
     name: string;
     category: string;
     targetMuscles: string[];
-    equipment: string[];
+    equipment: string;
     notes: string;
   }) => {
     setModalError(null);
@@ -85,6 +111,10 @@ export default function ExercisesScreen() {
 
     try {
       if (modalState.visible && modalState.mode === 'edit' && modalState.exercise) {
+        if (!modalState.canEdit) {
+          showAdminOnlyAlert();
+          return;
+        }
         await updateExercise(modalState.exercise.id, payload);
       } else {
         await createExercise(payload);
@@ -122,6 +152,11 @@ export default function ExercisesScreen() {
 
   const handleDelete = async () => {
     if (!selectedExercise) {
+      return;
+    }
+
+    if (modalState.visible && modalState.mode === 'edit' && !modalState.canEdit) {
+      showAdminOnlyAlert();
       return;
     }
 
@@ -173,12 +208,21 @@ export default function ExercisesScreen() {
         visible={modalState.visible}
         mode={modalState.visible ? modalState.mode : 'create'}
         initialExercise={selectedExercise ?? undefined}
+        canEdit={
+          modalState.visible && modalState.mode === 'edit' ? modalState.canEdit : true
+        }
         submitting={isSubmitting}
         deleting={isDeleting}
         error={modalError}
         onClose={closeModal}
         onSubmit={handleSubmit}
-        onDelete={modalState.visible && modalState.mode === 'edit' ? handleConfirmDelete : undefined}
+        onDelete={
+          modalState.visible && modalState.mode === 'edit'
+            ? modalState.canEdit
+              ? handleConfirmDelete
+              : showAdminOnlyAlert
+            : undefined
+        }
       />
     </View>
   );

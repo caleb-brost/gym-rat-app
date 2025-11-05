@@ -3,6 +3,7 @@ import type { Database } from '@/types/supabase';
 import type { Exercise, NewExercisePayload } from './types';
 
 type ExerciseRow = Database['public']['Tables']['exercises']['Row'];
+export const ADMIN_USER_ID = 'd308b30f-f210-4906-8444-c131191e087d';
 
 const mapExerciseRow = (row: ExerciseRow): Exercise => ({
   id: row.id,
@@ -16,10 +17,35 @@ const mapExerciseRow = (row: ExerciseRow): Exercise => ({
 });
 
 export const listExercises = async (): Promise<Exercise[]> => {
-  const { data, error } = await supabase
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
+
+  if (sessionError) {
+    throw sessionError;
+  }
+
+  const ownerIds = new Set<string>([ADMIN_USER_ID]);
+  const currentUserId = session?.user?.id;
+
+  if (currentUserId) {
+    ownerIds.add(currentUserId);
+  }
+
+  const filters: string[] = Array.from(ownerIds).map((id) => `user_id.eq.${id}`);
+  filters.push('user_id.is.null');
+
+  const query = supabase
     .from('exercises')
     .select('*')
     .order('name', { ascending: true });
+
+  if (filters.length > 0) {
+    query.or(filters.join(','));
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     throw error;
@@ -79,7 +105,7 @@ export const updateExercise = async (id: string, payload: Partial<NewExercisePay
       notes: payload.notes?.trim() || null,
     }),
     ...(payload.equipment !== undefined && {
-      equipment: payload.equipment ?? null,
+      equipment: payload.equipment?.trim() || null,
     }),
     ...(payload.userId !== undefined && {
       user_id: payload.userId ?? null,

@@ -56,6 +56,7 @@ interface ExerciseEditTabProps {
   mode: 'create' | 'edit';
   submitting: boolean;
   deleting: boolean;
+  canEdit?: boolean;
   onCancel: () => void;
   onSubmit: () => Promise<void> | void;
   onDelete?: () => Promise<void> | void;
@@ -77,6 +78,7 @@ export const ExerciseEditTab: React.FC<ExerciseEditTabProps> = ({
   mode,
   submitting,
   deleting,
+  canEdit = true,
   onCancel,
   onSubmit,
   onDelete,
@@ -173,14 +175,20 @@ export const ExerciseEditTab: React.FC<ExerciseEditTabProps> = ({
     <View style={styles.actionsRow}>
       {mode === 'edit' && onDelete ? (
         <TouchableOpacity
-          style={[styles.actionButton, styles.deleteButton]}
+          style={[
+            styles.actionButton,
+            styles.deleteButton,
+            (!canEdit || submitting || deleting) && styles.disabledButton,
+          ]}
           onPress={() => onDelete?.()}
           disabled={submitting || deleting}
         >
           {deleting ? (
             <ActivityIndicator color="#fff" size="small" />
           ) : (
-            <Text style={styles.deleteButtonText}>Delete</Text>
+            <Text style={styles.deleteButtonText}>
+              Delete{!canEdit ? ' 🔒' : ''}
+            </Text>
           )}
         </TouchableOpacity>
       ) : (

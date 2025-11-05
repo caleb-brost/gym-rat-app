@@ -1,3 +1,6 @@
+## Start Project
+npx expo start
+
 GymRat/
 ├── app/                             # Expo Router navigation
 │   ├── (auth)/                      # Auth routes group

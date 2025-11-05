@@ -10,7 +10,6 @@ import {
   View,
 } from 'react-native';
 import type { Exercise } from '../types';
-import { parseCommaSeparatedList } from '../utils';
 import { ExerciseEditTab } from './ExerciseEditTab';
 import { ExerciseSummaryTab } from './ExerciseSummaryTab';
 
@@ -37,6 +36,7 @@ interface ExerciseFormModalProps {
   visible: boolean;
   mode: 'create' | 'edit';
   initialExercise?: Exercise | null;
+  canEdit?: boolean;
   submitting: boolean;
   error?: string | null;
   deleting?: boolean;
@@ -45,7 +45,7 @@ interface ExerciseFormModalProps {
     name: string;
     category: string;
     targetMuscles: string[];
-    equipment: string[];
+    equipment: string;
     notes: string;
   }) => Promise<void> | void;
   onDelete?: () => Promise<void> | void;
@@ -55,6 +55,7 @@ export const ExerciseFormModal: React.FC<ExerciseFormModalProps> = ({
   visible,
   mode,
   initialExercise,
+  canEdit = true,
   submitting,
   error,
   deleting = false,
@@ -93,7 +94,7 @@ export const ExerciseFormModal: React.FC<ExerciseFormModalProps> = ({
       setName(initialExercise.name);
       setCategory(initialExercise.category ?? '');
       setMuscles(initialExercise.targetMuscles ? [...initialExercise.targetMuscles] : []);
-      setEquipment(initialExercise.equipment ? initialExercise.equipment.join(', ') : '');
+      setEquipment(initialExercise.equipment?.[0] ?? '');
       setNotes(initialExercise.notes ?? '');
     } else {
       setName('');
@@ -121,7 +122,7 @@ export const ExerciseFormModal: React.FC<ExerciseFormModalProps> = ({
       name: trimmedName,
       category: category.trim(),
       targetMuscles: muscles.map((muscle) => muscle.trim()).filter(Boolean),
-      equipment: parseCommaSeparatedList(equipment),
+      equipment: equipment.trim(),
       notes: notes.trim(),
     });
   };
@@ -141,7 +142,7 @@ export const ExerciseFormModal: React.FC<ExerciseFormModalProps> = ({
           <View style={styles.modalCard}>
             <View style={styles.headerRow}>
               <Text style={styles.modalTitle}>{title}</Text>
-              {mode === 'edit' ? (
+              {mode === 'edit' && canEdit ? (
                 <TouchableOpacity
                   onPress={() => {
                     setIsEditing((current) => !current);
@@ -186,7 +187,8 @@ export const ExerciseFormModal: React.FC<ExerciseFormModalProps> = ({
                 deleting={deleting}
                 onCancel={onClose}
                 onSubmit={handleSubmit}
-                onDelete={mode === 'edit' ? onDelete : undefined}
+                canEdit={canEdit}
+                onDelete={mode === 'edit' && canEdit ? onDelete : undefined}
                 onChangeName={setName}
                 onChangeCategory={setCategory}
                 onChangeMuscles={setMuscles}

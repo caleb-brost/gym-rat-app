@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { Exercise } from '../types';
-import { parseCommaSeparatedList } from '../utils';
 
 interface ExerciseSummaryTabProps {
   mode: 'create' | 'edit';
@@ -38,7 +37,9 @@ export const ExerciseSummaryTab: React.FC<ExerciseSummaryTabProps> = ({
       title: formValues.name.trim(),
       category: formValues.category.trim(),
       targetMuscles: formValues.muscles.map((muscle) => muscle.trim()).filter(Boolean),
-      equipment: parseCommaSeparatedList(formValues.equipment),
+      equipment: formValues.equipment.trim().length
+        ? [formValues.equipment.trim()]
+        : [],
       notes: formValues.notes.trim(),
       createdAt: '',
       userId: '',
@@ -54,10 +55,7 @@ export const ExerciseSummaryTab: React.FC<ExerciseSummaryTabProps> = ({
         label: 'Target Muscles',
         value: details.targetMuscles.length ? details.targetMuscles.join(', ') : '',
       },
-      {
-        label: 'Equipment',
-        value: details.equipment.length ? details.equipment.join(', ') : '',
-      },
+      {label: 'Equipment', value: details.equipment.length},
       { label: 'Notes', value: details.notes },
       { label: 'Created At', value: details.createdAt },
       { label: 'User ID', value: details.userId },

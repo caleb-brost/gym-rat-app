@@ -4,7 +4,7 @@ export interface Exercise {
   category: string | null;
   targetMuscles: string[];
   notes: string | null;
-  equipment: string[] | null;
+  equipment: string | null;
   createdAt: string | null;
   userId: string | null;
 }
@@ -14,6 +14,6 @@ export type NewExercisePayload = {
   category?: string;
   targetMuscles?: string[];
   notes?: string;
-  equipment?: string[];
+  equipment?: string;
   userId?: string;
 };

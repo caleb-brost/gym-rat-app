@@ -1,55 +1,117 @@
 import { useAuthSession } from '@/features/auth/hooks';
+import { ProfileAvatarSection } from '@/features/profile/components/ProfileAvatarSection';
+import { useProfileAvatar, useProfileDetails } from '@/features/profile/hooks';
+import { profileStyles } from '@/features/profile/styles';
 import { Link } from 'expo-router';
-import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback } from 'react';
+import {
+  ActivityIndicator,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 export default function ProfileScreen() {
-  const { email, userId, username, loading, error, signOut } = useAuthSession();
+  const {
+    email,
+    userId,
+    username,
+    avatarUrl,
+    loading,
+    error,
+    signOut,
+    refresh,
+  } = useAuthSession();
+  const {
+    profile,
+    loading: profileLoading,
+    error: profileError,
+    refresh: refreshProfile,
+  } = useProfileDetails({ userId });
 
-  if (loading) {
+  const combinedRefresh = useCallback(async () => {
+    await refresh();
+    await refreshProfile();
+  }, [refresh, refreshProfile]);
+
+  const effectiveAvatarUrl = profile?.avatar_url ?? avatarUrl;
+
+  const {
+    currentAvatar,
+    pickAvatar,
+    uploading,
+    uploadError,
+    pickerError,
+    canEdit,
+  } = useProfileAvatar({
+    userId,
+    avatarUrl: effectiveAvatarUrl,
+    refresh: combinedRefresh,
+  });
+
+  if (pickerError) console.log("This is the error:", pickerError);
+
+  if (loading || profileLoading) {
     return (
-      <View style={styles.centerContent}>
+      <View style={profileStyles.centerContent}>
         <ActivityIndicator />
       </View>
     );
   }
 
   return (
-    <View style={styles.root}>
-      <View style={styles.buttonContainer}>
+    <View style={profileStyles.root}>
+      <View style={profileStyles.buttonContainer}>
         {email ? (
-          <TouchableOpacity onPress={signOut} style={styles.signOutButton}>
-            <Text style={styles.signOutLabel}>Sign out</Text>
+          <TouchableOpacity onPress={signOut} style={profileStyles.signOutButton}>
+            <Text style={profileStyles.signOutLabel}>Sign out</Text>
           </TouchableOpacity>
         ) : null}
       </View>
 
       {email ? (
         <View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Username</Text>
-            <Text style={styles.infoValue}>{username ?? '—'}</Text>
+          <ProfileAvatarSection
+            currentAvatar={currentAvatar}
+            pickAvatar={pickAvatar}
+            canEdit={canEdit}
+            uploading={uploading}
+            pickerError={pickerError}
+            uploadError={uploadError}
+          />
+          <View style={profileStyles.infoRow}>
+            <Text style={profileStyles.infoLabel}>Username</Text>
+            <Text style={profileStyles.infoValue}>{profile?.username ?? username ?? '—'}</Text>
           </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Email</Text>
-            <Text style={styles.infoValue}>{email}</Text>
+          <View style={profileStyles.infoRow}>
+            <Text style={profileStyles.infoLabel}>Email</Text>
+            <Text style={profileStyles.infoValue}>{email}</Text>
           </View>
           {userId ? (
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>User ID</Text>
-              <Text style={styles.infoValue}>{userId}</Text>
+            <View style={profileStyles.infoRow}>
+              <Text style={profileStyles.infoLabel}>User ID</Text>
+              <Text style={profileStyles.infoValue}>{userId}</Text>
             </View>
           ) : null}
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {profile?.created_at ? (
+            <View style={profileStyles.infoRow}>
+              <Text style={profileStyles.infoLabel}>Joined</Text>
+              <Text style={profileStyles.infoValue}>
+                {new Date(profile.created_at).toLocaleString()}
+              </Text>
+            </View>
+          ) : null}
+          {error ? <Text style={profileStyles.error}>{error}</Text> : null}
+          {profileError ? <Text style={profileStyles.error}>{profileError}</Text> : null}
         </View>
       ) : (
         <View>
-          <Text style={styles.subtitle}>You are not signed in.</Text>
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-          <Link href="/sign-in" style={styles.link}>
+          <Text style={profileStyles.subtitle}>You are not signed in.</Text>
+          {error ? <Text style={profileStyles.error}>{error}</Text> : null}
+          <Link href="/sign-in" style={profileStyles.link}>
             Go to sign-in
           </Link>
-          <Link href="/sign-up" style={styles.linkSecondary}>
+          <Link href="/sign-up" style={profileStyles.linkSecondary}>
             Create an account
           </Link>
         </View>
@@ -57,66 +119,3 @@ export default function ProfileScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-    paddingTop: 10,
-    paddingHorizontal: 32,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#555',
-    marginBottom: 16,
-  },
-    buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginTop: 10,
-    marginRight: 10,
-  },
-  signOutButton: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-  },
-  signOutLabel: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  infoRow: {
-    marginBottom: 12,
-  },
-  infoLabel: {
-    fontSize: 13,
-    color: '#777',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 4,
-  },
-  infoValue: {
-    fontSize: 16,
-    color: '#222',
-  },
-  error: {
-    color: '#d14343',
-    marginBottom: 12,
-  },
-  link: {
-    color: '#007AFF',
-    fontSize: 16,
-    marginBottom: 8,
-  },
-  linkSecondary: {
-    color: '#555',
-    fontSize: 14,
-  },
-  centerContent: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-});

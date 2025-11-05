@@ -6,6 +6,26 @@ import type { AuthResponse, SignInPayload, SignUpPayload } from './types';
 type UsersRow = Database['public']['Tables']['users']['Row'];
 type UsersInsert = Database['public']['Tables']['users']['Insert'];
 
+const persistAvatarUrl = async (userId: string, avatarUrl: string) => {
+  const { error } = await supabase
+    .from('users')
+    .update({ avatar_url: avatarUrl })
+    .eq('id', userId);
+
+  if (error) {
+    throw error;
+  }
+};
+
+const appendCacheBuster = (url: string, timestamp = Date.now()) => {
+  if (url.includes('?v=') || url.includes('&v=')) {
+    return url;
+  }
+
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}v=${timestamp}`;
+};
+
 const toAuthResponse = (
   user: NonNullable<Awaited<ReturnType<typeof supabase.auth.getUser>>['data']['user']>,
   profile: Pick<UsersRow, 'username' | 'avatar_url'> | null,
@@ -21,6 +41,7 @@ const toAuthResponse = (
 const getProfile = async (
   userId: string,
 ): Promise<Pick<UsersRow, 'username' | 'avatar_url'> | null> => {
+  console.log('[auth/api] getProfile', userId);
   const { data, error } = await supabase
     .from('users')
     .select('username, avatar_url')
@@ -31,7 +52,34 @@ const getProfile = async (
     throw error;
   }
 
-  return data;
+  let profile = data;
+
+  if (profile) {
+    if (!profile.avatar_url || profile.avatar_url.trim() === '') {
+      const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(userId);
+
+      if (publicUrlData?.publicUrl) {
+        const cacheBustedUrl = appendCacheBuster(publicUrlData.publicUrl);
+
+        profile = {
+          ...profile,
+          avatar_url: cacheBustedUrl,
+        };
+
+        await persistAvatarUrl(userId, cacheBustedUrl).catch(() => undefined);
+      }
+    } else if (!profile.avatar_url.includes('?v=') && !profile.avatar_url.includes('&v=')) {
+      const cacheBustedUrl = appendCacheBuster(profile.avatar_url);
+      profile = {
+        ...profile,
+        avatar_url: cacheBustedUrl,
+      };
+
+      await persistAvatarUrl(userId, cacheBustedUrl).catch(() => undefined);
+    }
+  }
+
+  return profile;
 };
 
 export const signIn = async ({ email, password }: SignInPayload): Promise<AuthResponse> => {
@@ -78,11 +126,14 @@ export const getCurrentSession = async (): Promise<AuthResponse | null> => {
 };
 
 export const signOut = async (): Promise<void> => {
-  const { error } = await supabase.auth.signOut();
+  console.log('[auth/api] signOut:start');
+  const { error } = await supabase.auth.signOut({ scope: 'local' });
 
-  if (error) {
+  if (error && error.message !== 'Auth session missing!') {
+    console.log('[auth/api] signOut:error', error);
     throw error;
   }
+  console.log('[auth/api] signOut:done', error?.message);
 };
 
 interface EnsureProfileInput {
@@ -101,22 +152,70 @@ export const ensureProfile = async ({ userId, username, avatarUrl }: EnsureProfi
 
   const payload: UsersInsert = {
     id: userId,
-    auth_id: userId,
     username: effectiveUsername,
     avatar_url: avatarUrl ?? null,
   };
 
+  const { data: existing, error: lookupError } = await supabase
+    .from('users')
+    .select('id')
+    .eq('id', userId)
+    .limit(1)
+    .maybeSingle();
+
+  if (lookupError) {
+    throw lookupError;
+  }
+
+  if (existing?.id) {
+    const { data, error } = await supabase
+      .from('users')
+      .update({
+        username: payload.username,
+        avatar_url: payload.avatar_url ?? null,
+      })
+      .eq('id', userId)
+      .select('username, avatar_url');
+
+    if (error) {
+      throw error;
+    }
+
+    const row = Array.isArray(data) ? data[0] : data;
+
+    if (row) {
+      return row as Pick<UsersRow, 'username' | 'avatar_url'>;
+    }
+
+    const profile = await getProfile(userId).catch(() => null);
+    if (profile) {
+      return profile;
+    }
+
+    throw new Error('Unable to update user profile.');
+  }
+
   const { data, error } = await supabase
     .from('users')
-    .upsert(payload, { onConflict: 'id' })
-    .select('username, avatar_url')
-    .single();
+    .insert(payload)
+    .select('username, avatar_url');
 
   if (error) {
     throw error;
   }
 
-  return data as Pick<UsersRow, 'username' | 'avatar_url'>;
+  const row = Array.isArray(data) ? data[0] : data;
+
+  if (row) {
+    return row as Pick<UsersRow, 'username' | 'avatar_url'>;
+  }
+
+  const profile = await getProfile(userId).catch(() => null);
+  if (profile) {
+    return profile;
+  }
+
+  throw new Error('Unable to create user profile.');
 };
 
 export interface AvatarUploadInput {
@@ -144,14 +243,15 @@ export const uploadAvatar = async ({ userId, uri, mimeType }: AvatarUploadInput)
   }
 
   const { data: publicUrlData } = bucket.getPublicUrl(path);
+  const publicUrlWithVersion = appendCacheBuster(publicUrlData.publicUrl);
 
   const profile = await ensureProfile({
     userId,
-    avatarUrl: publicUrlData.publicUrl,
+    avatarUrl: publicUrlWithVersion,
   });
 
   return {
-    avatarUrl: publicUrlData.publicUrl,
+    avatarUrl: publicUrlWithVersion,
     username: profile.username,
   };
 };

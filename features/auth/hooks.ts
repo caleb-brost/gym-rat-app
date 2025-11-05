@@ -24,10 +24,12 @@ export const useAuthSession = () => {
   const [state, setState] = useState<AuthState>(initialState);
 
   const refresh = useCallback(async () => {
+    console.log('[useAuthSession] refresh:start');
     setState((prev) => ({ ...prev, loading: true, error: null }));
 
     try {
       const session = await getCurrentSession();
+      console.log('[useAuthSession] refresh:session', session);
       setState({
         userId: session?.userId ?? null,
         email: session?.email ?? null,
@@ -36,7 +38,9 @@ export const useAuthSession = () => {
         loading: false,
         error: null,
       });
+      console.log('[useAuthSession] refresh:done');
     } catch (error) {
+      console.log('[useAuthSession] refresh:error', error);
       setState({
         userId: null,
         email: null,
@@ -45,6 +49,7 @@ export const useAuthSession = () => {
         loading: false,
         error: error instanceof Error ? error.message : String(error),
       });
+      console.log('[useAuthSession] refresh:done (error)');
     }
   }, []);
 
@@ -53,12 +58,30 @@ export const useAuthSession = () => {
 
     void refresh();
 
-    const { data: subscription } = supabase.auth.onAuthStateChange(async () => {
+    const { data: subscription } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('[useAuthSession] onAuthStateChange', event, session?.user?.id);
       if (!isMounted) {
         return;
       }
 
-      await refresh();
+      if (event === 'SIGNED_OUT') {
+        console.log('[useAuthSession] handling SIGNED_OUT event');
+        setState({ ...initialState, loading: false, error: null });
+        return;
+      }
+
+      if (event === 'INITIAL_SESSION') {
+        if (session?.user) {
+          await refresh();
+        } else {
+          setState({ ...initialState, loading: false, error: null });
+        }
+        return;
+      }
+
+      if (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') {
+        await refresh();
+      }
     });
 
     return () => {
@@ -68,15 +91,28 @@ export const useAuthSession = () => {
   }, [refresh]);
 
   const handleSignOut = useCallback(async () => {
+    console.log('[useAuthSession] signOut:start');
+    setState((prev) => ({ ...prev, loading: true, error: null }));
+
+    let signOutError: unknown = null;
     try {
       await signOut();
-      setState({ ...initialState, loading: false });
     } catch (error) {
-      setState((prev) => ({
-        ...prev,
-        error: error instanceof Error ? error.message : String(error),
-      }));
+      signOutError = error;
+      console.log('[useAuthSession] signOut:error', error);
     }
+
+    setState({
+      ...initialState,
+      loading: false,
+      error:
+        signOutError instanceof Error
+          ? signOutError.message
+          : signOutError
+          ? String(signOutError)
+          : null,
+    });
+    console.log('[useAuthSession] signOut:done');
   }, []);
 
   return {

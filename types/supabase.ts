@@ -20,7 +20,7 @@ export type Database = {
         Row: {
           category: string | null
           created_at: string | null
-          equipment: string[] | null
+          equipment: string | null
           id: string
           name: string
           notes: string | null
@@ -30,7 +30,7 @@ export type Database = {
         Insert: {
           category?: string | null
           created_at?: string | null
-          equipment?: string[] | null
+          equipment?: string | null
           id?: string
           name: string
           notes?: string | null
@@ -40,7 +40,7 @@ export type Database = {
         Update: {
           category?: string | null
           created_at?: string | null
-          equipment?: string[] | null
+          equipment?: string | null
           id?: string
           name?: string
           notes?: string | null
@@ -102,24 +102,21 @@ export type Database = {
       }
       users: {
         Row: {
-          auth_id: string | null
           avatar_url: string | null
           created_at: string | null
-          id: string
+          id: string | null
           username: string
         }
         Insert: {
-          auth_id?: string | null
           avatar_url?: string | null
           created_at?: string | null
-          id?: string
+          id?: string | null
           username: string
         }
         Update: {
-          auth_id?: string | null
           avatar_url?: string | null
           created_at?: string | null
-          id?: string
+          id?: string | null
           username?: string
         }
         Relationships: []
