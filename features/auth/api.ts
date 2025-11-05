@@ -3,12 +3,12 @@ import type { Database } from '@/types/supabase';
 
 import type { AuthResponse, SignInPayload, SignUpPayload } from './types';
 
-type UsersRow = Database['public']['Tables']['users']['Row'];
-type UsersInsert = Database['public']['Tables']['users']['Insert'];
+type ProfilesRow = Database['public']['Tables']['profiles']['Row'];
+type ProfilesInsert = Database['public']['Tables']['profiles']['Insert'];
 
 const persistAvatarUrl = async (userId: string, avatarUrl: string) => {
   const { error } = await supabase
-    .from('users')
+    .from('profiles')
     .update({ avatar_url: avatarUrl })
     .eq('id', userId);
 
@@ -28,7 +28,7 @@ const appendCacheBuster = (url: string, timestamp = Date.now()) => {
 
 const toAuthResponse = (
   user: NonNullable<Awaited<ReturnType<typeof supabase.auth.getUser>>['data']['user']>,
-  profile: Pick<UsersRow, 'username' | 'avatar_url'> | null,
+  profile: Pick<ProfilesRow, 'username' | 'avatar_url' | 'created_at'> | null,
   sessionCreated: boolean,
 ): AuthResponse => ({
   userId: user.id,
@@ -40,11 +40,11 @@ const toAuthResponse = (
 
 const getProfile = async (
   userId: string,
-): Promise<Pick<UsersRow, 'username' | 'avatar_url'> | null> => {
+): Promise<Pick<ProfilesRow, 'username' | 'avatar_url' | 'created_at'> | null> => {
   console.log('[auth/api] getProfile', userId);
   const { data, error } = await supabase
-    .from('users')
-    .select('username, avatar_url')
+    .from('profiles')
+    .select('username, avatar_url, created_at')
     .eq('id', userId)
     .maybeSingle();
 
@@ -150,14 +150,14 @@ export const ensureProfile = async ({ userId, username, avatarUrl }: EnsureProfi
     effectiveUsername = existing?.username ?? `user-${userId.slice(0, 8)}`;
   }
 
-  const payload: UsersInsert = {
+  const payload: ProfilesInsert = {
     id: userId,
     username: effectiveUsername,
     avatar_url: avatarUrl ?? null,
   };
 
   const { data: existing, error: lookupError } = await supabase
-    .from('users')
+    .from('profiles')
     .select('id')
     .eq('id', userId)
     .limit(1)
@@ -169,13 +169,13 @@ export const ensureProfile = async ({ userId, username, avatarUrl }: EnsureProfi
 
   if (existing?.id) {
     const { data, error } = await supabase
-      .from('users')
+      .from('profiles')
       .update({
         username: payload.username,
         avatar_url: payload.avatar_url ?? null,
       })
       .eq('id', userId)
-      .select('username, avatar_url');
+      .select('username, avatar_url, created_at');
 
     if (error) {
       throw error;
@@ -184,7 +184,7 @@ export const ensureProfile = async ({ userId, username, avatarUrl }: EnsureProfi
     const row = Array.isArray(data) ? data[0] : data;
 
     if (row) {
-      return row as Pick<UsersRow, 'username' | 'avatar_url'>;
+      return row as Pick<ProfilesRow, 'username' | 'avatar_url' | 'created_at'>;
     }
 
     const profile = await getProfile(userId).catch(() => null);
@@ -196,9 +196,9 @@ export const ensureProfile = async ({ userId, username, avatarUrl }: EnsureProfi
   }
 
   const { data, error } = await supabase
-    .from('users')
+    .from('profiles')
     .insert(payload)
-    .select('username, avatar_url');
+    .select('username, avatar_url, created_at');
 
   if (error) {
     throw error;
@@ -207,7 +207,7 @@ export const ensureProfile = async ({ userId, username, avatarUrl }: EnsureProfi
   const row = Array.isArray(data) ? data[0] : data;
 
   if (row) {
-    return row as Pick<UsersRow, 'username' | 'avatar_url'>;
+    return row as Pick<ProfilesRow, 'username' | 'avatar_url' | 'created_at'>;
   }
 
   const profile = await getProfile(userId).catch(() => null);

@@ -10,7 +10,7 @@ type UseProfileAvatarArgs = {
   refresh: () => Promise<void>;
 };
 
-type UserProfile = Database['public']['Tables']['users']['Row'] | null;
+type UserProfile = Database['public']['Tables']['profiles']['Row'] | null;
 
 type UseProfileDetailsArgs = {
   userId: string | null;
@@ -18,7 +18,7 @@ type UseProfileDetailsArgs = {
 
 const persistAvatarUrl = async (userId: string, avatarUrl: string) => {
   const { error } = await supabase
-    .from('users')
+    .from('profiles')
     .update({ avatar_url: avatarUrl })
     .eq('id', userId);
 
@@ -54,7 +54,7 @@ export const useProfileDetails = ({ userId }: UseProfileDetailsArgs) => {
 
     try {
       const { data, error: supabaseError } = await supabase
-        .from('users')
+        .from('profiles')
         .select('*')
         .eq('id', userId)
         .limit(1)
