@@ -9,7 +9,14 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import type { Exercise } from '../types';
+import type {
+  Equipment,
+  Exercise,
+  ExerciseCategory,
+  ExerciseMuscleGroup,
+  ExerciseType,
+} from '../types';
+import type { ExerciseFormValues } from '../utils';
 import { ExerciseEditTab } from './ExerciseEditTab';
 import { ExerciseSummaryTab } from './ExerciseSummaryTab';
 
@@ -40,14 +47,9 @@ interface ExerciseFormModalProps {
   submitting: boolean;
   error?: string | null;
   deleting?: boolean;
+  equipmentOptions: Equipment[];
   onClose: () => void;
-  onSubmit: (values: {
-    name: string;
-    category: string;
-    targetMuscles: string[];
-    equipment: string;
-    notes: string;
-  }) => Promise<void> | void;
+  onSubmit: (values: ExerciseFormValues) => Promise<void> | void;
   onDelete?: () => Promise<void> | void;
 }
 
@@ -59,15 +61,17 @@ export const ExerciseFormModal: React.FC<ExerciseFormModalProps> = ({
   submitting,
   error,
   deleting = false,
+  equipmentOptions,
   onClose,
   onSubmit,
   onDelete,
 }) => {
   const [name, setName] = useState('');
-  const [category, setCategory] = useState('');
-  const [muscles, setMuscles] = useState<string[]>([]);
-  const [equipment, setEquipment] = useState('');
-  const [notes, setNotes] = useState('');
+  const [category, setCategory] = useState<ExerciseCategory | ''>('');
+  const [type, setType] = useState<ExerciseType>('weight');
+  const [muscleGroups, setMuscleGroups] = useState<ExerciseMuscleGroup[]>([]);
+  const [equipmentId, setEquipmentId] = useState<string | null>(null);
+  const [description, setDescription] = useState('');
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(mode === 'create');
   const [viewTab, setViewTab] = useState<ViewTab>('summary');
@@ -81,9 +85,10 @@ export const ExerciseFormModal: React.FC<ExerciseFormModalProps> = ({
     if (!visible) {
       setName('');
       setCategory('');
-      setMuscles([]);
-      setEquipment('');
-      setNotes('');
+      setType('weight');
+      setMuscleGroups([]);
+      setEquipmentId(null);
+      setDescription('');
       setFieldError(null);
       setIsEditing(mode === 'create');
       setViewTab('summary');
@@ -93,15 +98,17 @@ export const ExerciseFormModal: React.FC<ExerciseFormModalProps> = ({
     if (initialExercise) {
       setName(initialExercise.name);
       setCategory(initialExercise.category ?? '');
-      setMuscles(initialExercise.targetMuscles ? [...initialExercise.targetMuscles] : []);
-      setEquipment(initialExercise.equipment?.[0] ?? '');
-      setNotes(initialExercise.notes ?? '');
+      setType(initialExercise.type);
+      setMuscleGroups(initialExercise.muscleGroups ? [...initialExercise.muscleGroups] : []);
+      setEquipmentId(initialExercise.equipmentId ?? null);
+      setDescription(initialExercise.description ?? '');
     } else {
       setName('');
       setCategory('');
-      setMuscles([]);
-      setEquipment('');
-      setNotes('');
+      setType('weight');
+      setMuscleGroups([]);
+      setEquipmentId(null);
+      setDescription('');
     }
     setFieldError(null);
     setIsEditing(mode === 'create');
@@ -118,14 +125,35 @@ export const ExerciseFormModal: React.FC<ExerciseFormModalProps> = ({
 
     setFieldError(null);
 
-    await onSubmit({
+    const payload: ExerciseFormValues = {
       name: trimmedName,
-      category: category.trim(),
-      targetMuscles: muscles.map((muscle) => muscle.trim()).filter(Boolean),
-      equipment: equipment.trim(),
-      notes: notes.trim(),
-    });
+      category,
+      type,
+      muscleGroups,
+      equipmentId,
+      description,
+    };
+
+    await onSubmit(payload);
   };
+
+  const equipmentSelectOptions = useMemo(
+    () =>
+      equipmentOptions.map((option) => ({
+        label: option.name,
+        value: option.id,
+      })),
+    [equipmentOptions],
+  );
+
+  const selectedEquipmentName = useMemo(() => {
+    if (!equipmentId) {
+      return null;
+    }
+
+    const match = equipmentOptions.find((option) => option.id === equipmentId);
+    return match ? match.name : null;
+  }, [equipmentOptions, equipmentId]);
 
   return (
     <Modal
@@ -177,9 +205,11 @@ export const ExerciseFormModal: React.FC<ExerciseFormModalProps> = ({
               <ExerciseEditTab
                 name={name}
                 category={category}
-                muscles={muscles}
-                equipment={equipment}
-                notes={notes}
+                type={type}
+                muscleGroups={muscleGroups}
+                equipmentId={equipmentId}
+                equipmentOptions={equipmentSelectOptions}
+                description={description}
                 fieldError={fieldError}
                 submitError={error}
                 mode={mode}
@@ -191,9 +221,10 @@ export const ExerciseFormModal: React.FC<ExerciseFormModalProps> = ({
                 onDelete={mode === 'edit' && canEdit ? onDelete : undefined}
                 onChangeName={setName}
                 onChangeCategory={setCategory}
-                onChangeMuscles={setMuscles}
-                onChangeEquipment={setEquipment}
-                onChangeNotes={setNotes}
+                onChangeType={setType}
+                onChangeMuscleGroups={setMuscleGroups}
+                onChangeEquipmentId={setEquipmentId}
+                onChangeDescription={setDescription}
               />
             ) : viewTab === 'summary' ? (
               <ExerciseSummaryTab
@@ -202,9 +233,10 @@ export const ExerciseFormModal: React.FC<ExerciseFormModalProps> = ({
                 formValues={{
                   name,
                   category,
-                  muscles,
-                  equipment,
-                  notes,
+                  type,
+                  muscleGroups,
+                  equipmentName: selectedEquipmentName,
+                  description,
                 }}
               />
             ) : viewTab === 'history' ? (

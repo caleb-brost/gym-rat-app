@@ -8,9 +8,10 @@ interface ExerciseSummaryTabProps {
   formValues: {
     name: string;
     category: string;
-    muscles: string[];
-    equipment: string;
-    notes: string;
+    type: string;
+    muscleGroups: string[];
+    equipmentName: string | null;
+    description: string;
   };
 }
 
@@ -24,9 +25,10 @@ export const ExerciseSummaryTab: React.FC<ExerciseSummaryTabProps> = ({
       return {
         title: exercise.name,
         category: exercise.category ?? '',
-        targetMuscles: exercise.targetMuscles,
-        equipment: exercise.equipment ?? [],
-        notes: exercise.notes ?? '',
+        type: exercise.type,
+        muscleGroups: exercise.muscleGroups,
+        equipmentName: exercise.equipmentName ?? '',
+        description: exercise.description ?? '',
         createdAt: exercise.createdAt ?? '',
         userId: exercise.userId ?? '',
         id: exercise.id,
@@ -36,11 +38,12 @@ export const ExerciseSummaryTab: React.FC<ExerciseSummaryTabProps> = ({
     return {
       title: formValues.name.trim(),
       category: formValues.category.trim(),
-      targetMuscles: formValues.muscles.map((muscle) => muscle.trim()).filter(Boolean),
-      equipment: formValues.equipment.trim().length
-        ? [formValues.equipment.trim()]
-        : [],
-      notes: formValues.notes.trim(),
+      type: formValues.type,
+      muscleGroups: formValues.muscleGroups
+        .map((muscle) => muscle.trim())
+        .filter(Boolean),
+      equipmentName: formValues.equipmentName ?? '',
+      description: formValues.description.trim(),
       createdAt: '',
       userId: '',
       id: '',
@@ -51,12 +54,13 @@ export const ExerciseSummaryTab: React.FC<ExerciseSummaryTabProps> = ({
     () => [
       { label: 'Name', value: details.title },
       { label: 'Category', value: details.category },
+      { label: 'Type', value: details.type },
       {
-        label: 'Target Muscles',
-        value: details.targetMuscles.length ? details.targetMuscles.join(', ') : '',
+        label: 'Muscle Groups',
+        value: details.muscleGroups.length ? details.muscleGroups.join(', ') : '',
       },
-      {label: 'Equipment', value: details.equipment.length},
-      { label: 'Notes', value: details.notes },
+      { label: 'Equipment', value: details.equipmentName },
+      { label: 'Description', value: details.description },
       { label: 'Created At', value: details.createdAt },
       { label: 'User ID', value: details.userId },
       { label: 'Exercise ID', value: details.id },

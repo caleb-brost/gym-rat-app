@@ -17,7 +17,9 @@ export const ExerciseList: React.FC<ExerciseListProps> = ({ exercises, onSelect 
         <ExerciseCard
           name={item.name}
           category={item.category}
-          targetMuscles={item.targetMuscles}
+          type={item.type}
+          muscleGroups={item.muscleGroups}
+          equipmentName={item.equipmentName}
           onPress={() => onSelect?.(item)}
         />
       )}

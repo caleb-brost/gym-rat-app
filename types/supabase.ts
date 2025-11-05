@@ -40,39 +40,87 @@ export type Database = {
       }
       exercises: {
         Row: {
-          category: string | null
+          category: "Push" | "Pull" | "Legs" | "Mobility" | "Cardio" | "Other" | null
           created_at: string | null
           description: string | null
           equipment_id: string | null
           id: string
           image_url: string | null
-          muscle_groups: string[] | null
+          muscle_groups:
+            | (
+                | "Chest"
+                | "Back"
+                | "Quadriceps"
+                | "Hamstrings"
+                | "Glutes"
+                | "Shoulders"
+                | "Rear Deltoids"
+                | "Traps"
+                | "Biceps"
+                | "Triceps"
+                | "Calves"
+                | "Core"
+                | "Forearms"
+              )[]
+            | null
           name: string
-          type: string | null
+          type: "weight" | "time" | "distance" | null
           user_id: string | null
         }
         Insert: {
-          category?: string | null
+          category?: "Push" | "Pull" | "Legs" | "Mobility" | "Cardio" | "Other" | null
           created_at?: string | null
           description?: string | null
           equipment_id?: string | null
           id?: string
           image_url?: string | null
-          muscle_groups?: string[] | null
+          muscle_groups?:
+            | (
+                | "Chest"
+                | "Back"
+                | "Quadriceps"
+                | "Hamstrings"
+                | "Glutes"
+                | "Shoulders"
+                | "Rear Deltoids"
+                | "Traps"
+                | "Biceps"
+                | "Triceps"
+                | "Calves"
+                | "Core"
+                | "Forearms"
+              )[]
+            | null
           name: string
-          type?: string | null
+          type?: "weight" | "time" | "distance" | null
           user_id?: string | null
         }
         Update: {
-          category?: string | null
+          category?: "Push" | "Pull" | "Legs" | "Mobility" | "Cardio" | "Other" | null
           created_at?: string | null
           description?: string | null
           equipment_id?: string | null
           id?: string
           image_url?: string | null
-          muscle_groups?: string[] | null
+          muscle_groups?:
+            | (
+                | "Chest"
+                | "Back"
+                | "Quadriceps"
+                | "Hamstrings"
+                | "Glutes"
+                | "Shoulders"
+                | "Rear Deltoids"
+                | "Traps"
+                | "Biceps"
+                | "Triceps"
+                | "Calves"
+                | "Core"
+                | "Forearms"
+              )[]
+            | null
           name?: string
-          type?: string | null
+          type?: "weight" | "time" | "distance" | null
           user_id?: string | null
         }
         Relationships: [
@@ -137,6 +185,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "workout_exercises_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "workout_exercises_workout_id_fkey"
             columns: ["workout_id"]
             isOneToOne: false
@@ -149,7 +204,7 @@ export type Database = {
         Row: {
           completed: boolean | null
           created_at: string | null
-          distance_unit: string | null
+          distance_unit: "m" | "km" | "ft" | "mi" | null
           distance_value: number | null
           duration_seconds: number | null
           id: string
@@ -164,7 +219,7 @@ export type Database = {
         Insert: {
           completed?: boolean | null
           created_at?: string | null
-          distance_unit?: string | null
+          distance_unit?: "m" | "km" | "ft" | "mi" | null
           distance_value?: number | null
           duration_seconds?: number | null
           id?: string
@@ -179,7 +234,7 @@ export type Database = {
         Update: {
           completed?: boolean | null
           created_at?: string | null
-          distance_unit?: string | null
+          distance_unit?: "m" | "km" | "ft" | "mi" | null
           distance_value?: number | null
           duration_seconds?: number | null
           id?: string

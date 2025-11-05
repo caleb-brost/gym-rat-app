@@ -1,8 +1,9 @@
 import { useAuthSession } from '@/features/auth/hooks';
 import { ExerciseFormModal, ExerciseSearch } from '@/features/exercises/components';
 import { ADMIN_USER_ID } from '@/features/exercises/api';
-import { useExercises } from '@/features/exercises/hooks';
+import { useEquipmentOptions, useExercises } from '@/features/exercises/hooks';
 import type { Exercise } from '@/features/exercises/types';
+import type { ExerciseFormValues } from '@/features/exercises/utils';
 import { toExercisePayload } from '@/features/exercises/utils';
 import { getSupabaseErrorMessage } from '@/lib/supabase/errors';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -30,6 +31,11 @@ export default function ExercisesScreen() {
     updateExercise,
     deleteExercise,
   } = useExercises();
+  const {
+    equipment: equipmentOptions,
+    loading: equipmentLoading,
+    error: equipmentError,
+  } = useEquipmentOptions();
 
   const [modalState, setModalState] = useState<ModalState>(initialModalState);
   const [modalError, setModalError] = useState<string | null>(null);
@@ -96,13 +102,7 @@ export default function ExercisesScreen() {
     setModalError(null);
   };
 
-  const handleSubmit = async (values: {
-    name: string;
-    category: string;
-    targetMuscles: string[];
-    equipment: string;
-    notes: string;
-  }) => {
+  const handleSubmit = async (values: ExerciseFormValues) => {
     setModalError(null);
 
     const payload = toExercisePayload(values, {
@@ -214,6 +214,7 @@ export default function ExercisesScreen() {
         submitting={isSubmitting}
         deleting={isDeleting}
         error={modalError}
+        equipmentOptions={equipmentOptions}
         onClose={closeModal}
         onSubmit={handleSubmit}
         onDelete={
@@ -224,6 +225,15 @@ export default function ExercisesScreen() {
             : undefined
         }
       />
+      {(equipmentLoading || equipmentError) && (
+        <View style={styles.footerStatus}>
+          {equipmentLoading ? (
+            <Text style={styles.footerStatusText}>Loading equipment…</Text>
+          ) : equipmentError ? (
+            <Text style={styles.footerStatusError}>{equipmentError}</Text>
+          ) : null}
+        </View>
+      )}
     </View>
   );
 }
@@ -234,6 +244,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#f2f2f2',
     paddingTop: 10,
     paddingHorizontal: 24,
+  },
+  footerStatus: {
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  footerStatusText: {
+    fontSize: 12,
+    color: '#666',
+  },
+  footerStatusError: {
+    fontSize: 12,
+    color: '#d14343',
+    textAlign: 'center',
   },
   buttonContainer: {
     flexDirection: 'row',

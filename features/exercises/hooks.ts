@@ -2,8 +2,8 @@ import { supabase } from '@/db/supabaseClient';
 import { getSupabaseErrorMessage } from '@/lib/supabase/errors';
 import Fuse from 'fuse.js';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { createExercise, deleteExercise, listExercises, updateExercise } from './api';
-import type { Exercise, NewExercisePayload } from './types';
+import { createExercise, deleteExercise, listEquipment, listExercises, updateExercise } from './api';
+import type { Equipment, Exercise, NewExercisePayload } from './types';
 import { sortExercisesByName } from './utils';
 
 export const useExercises = () => {
@@ -44,13 +44,13 @@ export const useExercises = () => {
 
         if (sessionError) throw sessionError;
 
-        payload.userId = session?.user?.id.trim();
+        payload.userId = session?.user?.id ?? null;
 
         if (!payload.userId) {
           throw new Error('You must be signed in to create an exercise.');
         }
 
-        const exercise = await createExercise({ ...payload});
+        const exercise = await createExercise({ ...payload });
         setExercises((prev) => sortExercisesByName([...prev, exercise]));
         setError(null);
         return exercise;
@@ -80,12 +80,11 @@ export const useExercises = () => {
     [],
   );
 
-  const handleDelete = useCallback(
-      async (id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
     setDeletingId(id);
     try {
       await deleteExercise(id);
-      setExercises((prev) => prev.filter((exercises) => exercises.id !== id));
+      setExercises((prev) => prev.filter((exercise) => exercise.id !== id));
       setError(null);
     } finally {
       setDeletingId(null);
@@ -118,7 +117,7 @@ export const useExerciseSearch = (exercises: Exercise[]) => {
       keys: [
         { name: 'name', weight: 0.6 },
         { name: 'category', weight: 0.25 },
-        { name: 'targetMuscles', weight: 0.15 },
+        { name: 'muscleGroups', weight: 0.15 },
       ],
       threshold: 0.4,
     });
@@ -141,5 +140,37 @@ export const useExerciseSearch = (exercises: Exercise[]) => {
     setQuery,
     results,
     isFiltering: query.trim().length > 0,
+  };
+};
+
+export const useEquipmentOptions = () => {
+  const [equipment, setEquipment] = useState<Equipment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const data = await listEquipment();
+      setEquipment(data);
+    } catch (refreshError) {
+      setError(getSupabaseErrorMessage(refreshError, 'Failed to load equipment.'));
+      setEquipment([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  return {
+    equipment,
+    loading,
+    error,
+    refresh,
   };
 };

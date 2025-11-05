@@ -1,4 +1,9 @@
-import type { NewExercisePayload } from './types';
+import type {
+  ExerciseCategory,
+  ExerciseMuscleGroup,
+  ExerciseType,
+  NewExercisePayload,
+} from './types';
 
 export const parseCommaSeparatedList = (value: string): string[] =>
   value
@@ -11,10 +16,11 @@ export const sortExercisesByName = <T extends { name: string }>(items: T[]): T[]
 
 export interface ExerciseFormValues {
   name: string;
-  category: string;
-  targetMuscles: string[];
-  equipment: string;
-  notes: string;
+  category: ExerciseCategory | '';
+  type: ExerciseType;
+  muscleGroups: ExerciseMuscleGroup[];
+  equipmentId: string | null;
+  description: string;
 }
 
 interface ToPayloadOptions {
@@ -26,17 +32,23 @@ export const toExercisePayload = (
   options: ToPayloadOptions = {},
 ): NewExercisePayload => ({
   name: values.name,
-  category: values.category ? values.category : undefined,
-  targetMuscles:
-    values.targetMuscles.length > 0
-      ? values.targetMuscles
+  category: values.category ? values.category : options.includeEmpty ? null : undefined,
+  type: values.type,
+  muscleGroups:
+    values.muscleGroups.length > 0
+      ? values.muscleGroups
       : options.includeEmpty
         ? []
         : undefined,
-  equipment: values.equipment ? values.equipment : undefined,
-  notes:
-    values.notes
-      ? values.notes
+  equipmentId:
+    values.equipmentId !== null
+      ? values.equipmentId
+      : options.includeEmpty
+        ? null
+        : undefined,
+  description:
+    values.description
+      ? values.description
       : options.includeEmpty
         ? ''
         : undefined,

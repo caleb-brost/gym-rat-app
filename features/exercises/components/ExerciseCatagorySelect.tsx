@@ -4,8 +4,15 @@ import { StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-nativ
 const localeEquals = (a: string, b: string) =>
   a.localeCompare(b, undefined, { sensitivity: 'accent' }) === 0;
 
+type ChoiceOption =
+  | string
+  | {
+      label: string;
+      value: string;
+    };
+
 type SharedProps = {
-  options: string[];
+  options: ChoiceOption[];
   label?: string;
   allowClear?: boolean;
   containerStyle?: ViewStyle;
@@ -40,15 +47,30 @@ export const ExerciseCatagorySelect: React.FC<ExerciseCatagorySelectProps> = (pr
   const multiSelect = props.multiSelect === true;
 
   const choices = useMemo(() => {
-    const unique = new Map<string, string>();
+    const unique = new Map<string, { label: string; value: string }>();
 
     options.forEach((option) => {
-      const trimmed = option.trim();
-      if (!trimmed) return;
+      const resolved =
+        typeof option === 'string'
+          ? {
+              label: option.trim(),
+              value: option.trim(),
+            }
+          : {
+              label: option.label.trim(),
+              value: option.value.trim(),
+            };
 
-      const key = trimmed.toLowerCase();
-      if (!unique.has(key)) {
-        unique.set(key, trimmed.replace(/\s+/g, ' ').trim());
+      if (!resolved.label || !resolved.value) {
+        return;
+      }
+
+      const normalizedValue = resolved.value.toLowerCase();
+      if (!unique.has(normalizedValue)) {
+        unique.set(normalizedValue, {
+          label: resolved.label.replace(/\s+/g, ' ').trim(),
+          value: resolved.value,
+        });
       }
     });
 
@@ -76,25 +98,25 @@ export const ExerciseCatagorySelect: React.FC<ExerciseCatagorySelectProps> = (pr
     }
   };
 
-  const handleSelect = (choice: string) => {
+  const handleSelect = (choice: { label: string; value: string }) => {
     if (multiSelect) {
       const current = props.value ?? [];
 
-      const exists = current.some((item) => localeEquals(item, choice));
+      const exists = current.some((item) => localeEquals(item, choice.value));
       const updated = exists
-        ? current.filter((item) => !localeEquals(item, choice))
-        : [...current, choice];
+        ? current.filter((item) => !localeEquals(item, choice.value))
+        : [...current, choice.value];
 
       props.onSelect(updated);
     } else {
-      props.onSelect(choice);
+      props.onSelect(choice.value);
     }
   };
 
-  const isSelected = (choice: string) => {
+  const isSelected = (choice: { label: string; value: string }) => {
     if (multiSelect) {
       const current = props.value ?? [];
-      return current.some((item) => localeEquals(item, choice));
+      return current.some((item) => localeEquals(item, choice.value));
     }
 
     const current = props.value;
@@ -102,7 +124,7 @@ export const ExerciseCatagorySelect: React.FC<ExerciseCatagorySelectProps> = (pr
       return false;
     }
 
-    return localeEquals(current, choice);
+    return localeEquals(current, choice.value);
   };
 
   return (
@@ -125,7 +147,7 @@ export const ExerciseCatagorySelect: React.FC<ExerciseCatagorySelectProps> = (pr
       <View style={styles.optionGrid}>
         {choices.map((choice) => (
           <TouchableOpacity
-            key={choice}
+            key={choice.value}
             style={[
               styles.option,
               isSelected(choice) && styles.optionSelected,
@@ -140,7 +162,7 @@ export const ExerciseCatagorySelect: React.FC<ExerciseCatagorySelectProps> = (pr
                 isSelected(choice) && styles.optionTextSelected,
               ]}
             >
-              {choice}
+              {choice.label}
             </Text>
           </TouchableOpacity>
         ))}
@@ -181,7 +203,6 @@ const styles = StyleSheet.create({
   optionGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
   },
   option: {
     paddingHorizontal: 12,
@@ -190,6 +211,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f0f0',
     borderWidth: 1,
     borderColor: '#d9d9d9',
+    marginRight: 8,
+    marginBottom: 8,
   },
   optionSelected: {
     backgroundColor: '#007AFF',
