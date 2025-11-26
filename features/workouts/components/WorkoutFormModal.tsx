@@ -1,3 +1,4 @@
+import type { Exercise } from '@/features/exercises/types';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -11,7 +12,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import type { Exercise } from '@/features/exercises/types';
 import type { WorkoutExerciseFormValues, WorkoutFormValues } from '../types';
 import {
   createEmptyWorkoutExerciseForm,
@@ -396,6 +396,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 10,
     fontSize: 16,
+    color: '#666',
     backgroundColor: '#fafafa',
   },
   notesInput: {

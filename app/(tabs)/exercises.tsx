@@ -1,6 +1,6 @@
 import { useAuthSession } from '@/features/auth/hooks';
-import { ExerciseFormModal, ExerciseSearch } from '@/features/exercises/components';
 import { ADMIN_USER_ID } from '@/features/exercises/api';
+import { ExerciseFormModal, ExerciseSearch } from '@/features/exercises/components';
 import { useEquipmentOptions, useExercises } from '@/features/exercises/hooks';
 import type { Exercise } from '@/features/exercises/types';
 import type { ExerciseFormValues } from '@/features/exercises/utils';
@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginTop: 10,
+    marginTop: 12,
     marginRight: 10,
   },
   newButton: {

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import Fuse from 'fuse.js';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getSupabaseErrorMessage } from '@/lib/supabase/errors';
 import { createWorkout, deleteWorkout, listWorkouts } from './api';
 import type { NewWorkoutPayload, Workout } from './types';
@@ -81,5 +82,42 @@ export const useWorkouts = (userId: string | null) => {
     refresh,
     createWorkout: handleCreate,
     deleteWorkout: handleDelete,
+  };
+};
+
+export const useWorkoutSearch = (workouts: Workout[]) => {
+  const [query, setQuery] = useState('');
+
+  const fuse = useMemo(() => {
+    if (workouts.length === 0) {
+      return null;
+    }
+
+    return new Fuse(workouts, {
+      keys: [
+        { name: 'name', weight: 0.7 },
+        { name: 'notes', weight: 0.3 },
+      ],
+      threshold: 0.4,
+    });
+  }, [workouts]);
+
+  const results = useMemo(() => {
+    if (!query.trim()) {
+      return workouts;
+    }
+
+    if (!fuse) {
+      return workouts;
+    }
+
+    return fuse.search(query).map((result) => result.item);
+  }, [query, workouts, fuse]);
+
+  return {
+    query,
+    setQuery,
+    results,
+    isFiltering: query.trim().length > 0,
   };
 };

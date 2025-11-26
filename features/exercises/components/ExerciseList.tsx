@@ -1,5 +1,5 @@
 import React from 'react';
-import { FlatList } from 'react-native';
+import { FlatList, StyleSheet, View } from 'react-native';
 import type { Exercise } from '../types';
 import { ExerciseCard } from './ExerciseCard';
 
@@ -13,16 +13,28 @@ export const ExerciseList: React.FC<ExerciseListProps> = ({ exercises, onSelect 
     <FlatList
       data={exercises}
       keyExtractor={(item) => item.id}
+      contentContainerStyle={styles.listContent}
       renderItem={({ item }) => (
-        <ExerciseCard
-          name={item.name}
-          category={item.category}
-          type={item.type}
-          muscleGroups={item.muscleGroups}
-          equipmentName={item.equipmentName}
-          onPress={() => onSelect?.(item)}
-        />
+        <View style={styles.cardWrapper}>
+          <ExerciseCard
+            name={item.name}
+            category={item.category}
+            type={item.type}
+            muscleGroups={item.muscleGroups}
+            equipmentName={item.equipmentName}
+            onPress={() => onSelect?.(item)}
+          />
+        </View>
       )}
     />
   );
 };
+
+const styles = StyleSheet.create({
+  listContent: {
+    paddingBottom: 24,
+  },
+  cardWrapper: {
+    marginBottom: 3,
+  },
+});

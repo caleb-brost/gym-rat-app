@@ -1,21 +1,12 @@
-import React, { useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
 import { useAuthSession } from '@/features/auth/hooks';
 import { useExercises } from '@/features/exercises/hooks';
-import { WorkoutCard, WorkoutFormModal } from '@/features/workouts/components';
+import { WorkoutFormModal, WorkoutSearch } from '@/features/workouts/components';
 import { useWorkouts } from '@/features/workouts/hooks';
 import type { Workout, WorkoutFormValues } from '@/features/workouts/types';
 import { toWorkoutPayload } from '@/features/workouts/utils';
 import { getSupabaseErrorMessage } from '@/lib/supabase/errors';
+import React, { useCallback, useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function WorkoutScreen() {
   const { userId, loading: authLoading } = useAuthSession();
@@ -60,20 +51,23 @@ export default function WorkoutScreen() {
     }
   };
 
-  const confirmDelete = (workout: Workout) => {
-    if (Platform.OS === 'web') {
-      const shouldDelete = typeof window !== 'undefined' ? window.confirm(`Delete ${workout.name}?`) : false;
-      if (shouldDelete) {
-        void deleteWorkout(workout.id);
+  const confirmDelete = useCallback(
+    (workout: Workout) => {
+      if (Platform.OS === 'web') {
+        const shouldDelete = typeof window !== 'undefined' ? window.confirm(`Delete ${workout.name}?`) : false;
+        if (shouldDelete) {
+          void deleteWorkout(workout.id);
+        }
+        return;
       }
-      return;
-    }
 
-    Alert.alert('Delete workout', `Delete ${workout.name}?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => void deleteWorkout(workout.id) },
-    ]);
-  };
+      Alert.alert('Delete workout', `Delete ${workout.name}?`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => void deleteWorkout(workout.id) },
+      ]);
+    },
+    [deleteWorkout],
+  );
 
   const isBusy = loading || authLoading;
 
@@ -114,29 +108,19 @@ export default function WorkoutScreen() {
     }
 
     return (
-      <View style={styles.listContent}>
-        {workouts.map((workout) => (
-          <WorkoutCard
-            key={workout.id}
-            workout={workout}
-            deleting={deletingId === workout.id}
-            onDelete={confirmDelete}
-          />
-        ))}
-      </View>
+      <WorkoutSearch workouts={workouts} deletingId={deletingId} onDelete={confirmDelete} />
     );
-  }, [userId, authLoading, isBusy, error, workouts, refresh, deletingId]);
+  }, [authLoading, deletingId, error, isBusy, refresh, userId, workouts, confirmDelete]);
 
   return (
     <View style={styles.root}>
-      <View style={styles.headerRow}>
-        <Text style={styles.pageTitle}>Workouts</Text>
+      <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={[styles.newButton, (!userId || creating) && styles.newButtonDisabled]}
           onPress={handleOpenModal}
           disabled={!userId || creating}
         >
-          <Text style={styles.newButtonText}>{creating ? 'Saving...' : 'New workout'}</Text>
+          <Text style={styles.buttonText}>{creating ? 'Saving...' : 'New'}</Text>
         </TouchableOpacity>
       </View>
 
@@ -144,7 +128,7 @@ export default function WorkoutScreen() {
         <Text style={styles.warningText}>{exerciseOptionsError}</Text>
       ) : null}
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>{listContent}</ScrollView>
+      {listContent}
 
       <WorkoutFormModal
         visible={modalVisible}
@@ -162,57 +146,50 @@ export default function WorkoutScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#f7f7f7',
-    paddingTop: 24,
+    backgroundColor: '#f2f2f2',
+    paddingTop: 10,
     paddingHorizontal: 24,
   },
-  headerRow: {
+  buttonContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  pageTitle: {
-    fontSize: 28,
-    fontWeight: '700',
+    justifyContent: 'flex-end',
+    marginTop: 12,
+    marginRight: 10,
   },
   newButton: {
     backgroundColor: '#007AFF',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
   },
   newButtonDisabled: {
     opacity: 0.5,
   },
-  newButtonText: {
+  buttonText: {
     color: '#fff',
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '500',
   },
   warningText: {
-    color: '#d97706',
+    color: '#d14343',
+    fontSize: 12,
+    textAlign: 'center',
     marginBottom: 8,
   },
-  scrollContent: {
-    paddingBottom: 80,
-  },
-  listContent: {
-    paddingBottom: 24,
-  },
   centerContent: {
-    alignItems: 'center',
+    flex: 1,
     justifyContent: 'center',
-    paddingVertical: 60,
+    alignItems: 'center',
   },
   infoText: {
-    color: '#555',
-    fontSize: 15,
+    color: '#666',
+    fontSize: 14,
     textAlign: 'center',
+    paddingHorizontal: 24,
   },
   errorText: {
     color: '#d14343',
-    fontSize: 15,
+    fontSize: 14,
     textAlign: 'center',
     marginBottom: 12,
   },
