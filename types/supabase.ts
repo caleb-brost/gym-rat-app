@@ -1,3 +1,5 @@
+// Code generated via scripts/generate-supabase-types.mjs. Do not edit manually.
+
 export type Json =
   | string
   | number
@@ -10,7 +12,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "13.0.5"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -40,87 +42,39 @@ export type Database = {
       }
       exercises: {
         Row: {
-          category: "Push" | "Pull" | "Legs" | "Mobility" | "Cardio" | "Other" | null
+          category: Database["public"]["Enums"]["exercise_category"] | null
           created_at: string | null
           description: string | null
           equipment_id: string | null
           id: string
           image_url: string | null
-          muscle_groups:
-            | (
-                | "Chest"
-                | "Back"
-                | "Quadriceps"
-                | "Hamstrings"
-                | "Glutes"
-                | "Shoulders"
-                | "Rear Deltoids"
-                | "Traps"
-                | "Biceps"
-                | "Triceps"
-                | "Calves"
-                | "Core"
-                | "Forearms"
-              )[]
-            | null
+          muscle_groups: Database["public"]["Enums"]["muscle_group"][] | null
           name: string
-          type: "weight" | "time" | "distance" | null
+          type: Database["public"]["Enums"]["exercise_type"] | null
           user_id: string | null
         }
         Insert: {
-          category?: "Push" | "Pull" | "Legs" | "Mobility" | "Cardio" | "Other" | null
+          category?: Database["public"]["Enums"]["exercise_category"] | null
           created_at?: string | null
           description?: string | null
           equipment_id?: string | null
           id?: string
           image_url?: string | null
-          muscle_groups?:
-            | (
-                | "Chest"
-                | "Back"
-                | "Quadriceps"
-                | "Hamstrings"
-                | "Glutes"
-                | "Shoulders"
-                | "Rear Deltoids"
-                | "Traps"
-                | "Biceps"
-                | "Triceps"
-                | "Calves"
-                | "Core"
-                | "Forearms"
-              )[]
-            | null
+          muscle_groups?: Database["public"]["Enums"]["muscle_group"][] | null
           name: string
-          type?: "weight" | "time" | "distance" | null
+          type?: Database["public"]["Enums"]["exercise_type"] | null
           user_id?: string | null
         }
         Update: {
-          category?: "Push" | "Pull" | "Legs" | "Mobility" | "Cardio" | "Other" | null
+          category?: Database["public"]["Enums"]["exercise_category"] | null
           created_at?: string | null
           description?: string | null
           equipment_id?: string | null
           id?: string
           image_url?: string | null
-          muscle_groups?:
-            | (
-                | "Chest"
-                | "Back"
-                | "Quadriceps"
-                | "Hamstrings"
-                | "Glutes"
-                | "Shoulders"
-                | "Rear Deltoids"
-                | "Traps"
-                | "Biceps"
-                | "Triceps"
-                | "Calves"
-                | "Core"
-                | "Forearms"
-              )[]
-            | null
+          muscle_groups?: Database["public"]["Enums"]["muscle_group"][] | null
           name?: string
-          type?: "weight" | "time" | "distance" | null
+          type?: Database["public"]["Enums"]["exercise_type"] | null
           user_id?: string | null
         }
         Relationships: [
@@ -204,7 +158,7 @@ export type Database = {
         Row: {
           completed: boolean | null
           created_at: string | null
-          distance_unit: "m" | "km" | "ft" | "mi" | null
+          distance_unit: Database["public"]["Enums"]["distance_unit"] | null
           distance_value: number | null
           duration_seconds: number | null
           id: string
@@ -219,7 +173,7 @@ export type Database = {
         Insert: {
           completed?: boolean | null
           created_at?: string | null
-          distance_unit?: "m" | "km" | "ft" | "mi" | null
+          distance_unit?: Database["public"]["Enums"]["distance_unit"] | null
           distance_value?: number | null
           duration_seconds?: number | null
           id?: string
@@ -234,7 +188,7 @@ export type Database = {
         Update: {
           completed?: boolean | null
           created_at?: string | null
-          distance_unit?: "m" | "km" | "ft" | "mi" | null
+          distance_unit?: Database["public"]["Enums"]["distance_unit"] | null
           distance_value?: number | null
           duration_seconds?: number | null
           id?: string
@@ -302,7 +256,29 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      distance_unit: "m" | "km" | "ft" | "mi"
+      exercise_category:
+        | "Push"
+        | "Pull"
+        | "Legs"
+        | "Mobility"
+        | "Cardio"
+        | "Other"
+      exercise_type: "weight" | "time" | "distance"
+      muscle_group:
+        | "Chest"
+        | "Back"
+        | "Quadriceps"
+        | "Hamstrings"
+        | "Glutes"
+        | "Shoulders"
+        | "Rear Deltoids"
+        | "Traps"
+        | "Biceps"
+        | "Triceps"
+        | "Calves"
+        | "Core"
+        | "Forearms"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -429,6 +405,32 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      distance_unit: ["m", "km", "ft", "mi"],
+      exercise_category: [
+        "Push",
+        "Pull",
+        "Legs",
+        "Mobility",
+        "Cardio",
+        "Other",
+      ],
+      exercise_type: ["weight", "time", "distance"],
+      muscle_group: [
+        "Chest",
+        "Back",
+        "Quadriceps",
+        "Hamstrings",
+        "Glutes",
+        "Shoulders",
+        "Rear Deltoids",
+        "Traps",
+        "Biceps",
+        "Triceps",
+        "Calves",
+        "Core",
+        "Forearms",
+      ],
+    },
   },
 } as const

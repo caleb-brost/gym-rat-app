@@ -1,6 +1,7 @@
 import { useAuthSession } from '@/features/auth/hooks';
 import { useExercises } from '@/features/exercises/hooks';
 import { WorkoutFormModal, WorkoutSearch } from '@/features/workouts/components';
+import { ActiveWorkoutModal, useActiveWorkout } from '@/features/workouts/active';
 import { useWorkouts } from '@/features/workouts/hooks';
 import type { Workout, WorkoutFormValues } from '@/features/workouts/types';
 import { toWorkoutPayload } from '@/features/workouts/utils';
@@ -25,8 +26,10 @@ export default function WorkoutScreen() {
     loading: exerciseOptionsLoading,
     error: exerciseOptionsError,
   } = useExercises();
+  const { activeWorkout, startFromTemplate } = useActiveWorkout();
 
   const [modalVisible, setModalVisible] = useState(false);
+  const [activeModalVisible, setActiveModalVisible] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   const handleOpenModal = () => {
@@ -38,6 +41,54 @@ export default function WorkoutScreen() {
     setModalVisible(false);
     setFormError(null);
   };
+
+  const handleOpenActiveModal = () => {
+    setActiveModalVisible(true);
+  };
+
+  const handleCloseActiveModal = () => {
+    setActiveModalVisible(false);
+  };
+
+  const confirmReplaceActive = useCallback(
+    (action: () => void) => {
+      if (!activeWorkout) {
+        action();
+        return;
+      }
+
+      if (Platform.OS === 'web') {
+        const shouldReplace =
+          typeof window !== 'undefined'
+            ? window.confirm('Replace the current active workout? Progress will be lost.')
+            : false;
+        if (shouldReplace) {
+          action();
+        }
+        return;
+      }
+
+      Alert.alert(
+        'Replace active workout?',
+        'Starting a new active workout will clear your current progress.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Start new', style: 'destructive', onPress: action },
+        ],
+      );
+    },
+    [activeWorkout],
+  );
+
+  const handleStartActiveFromTemplate = useCallback(
+    (workout: Workout) => {
+      confirmReplaceActive(() => {
+        startFromTemplate(workout);
+        setActiveModalVisible(true);
+      });
+    },
+    [confirmReplaceActive, startFromTemplate],
+  );
 
   const handleSubmit = async (values: WorkoutFormValues) => {
     setFormError(null);
@@ -70,6 +121,20 @@ export default function WorkoutScreen() {
   );
 
   const isBusy = loading || authLoading;
+
+  const activeSummary = useMemo(() => {
+    if (!activeWorkout) {
+      return 'Start from a template or empty session.';
+    }
+
+    if (activeWorkout.endedAt) {
+      const finishedAt = new Date(activeWorkout.endedAt);
+      return `Finished ${finishedAt.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`;
+    }
+
+    const exerciseCount = activeWorkout.exercises.length;
+    return `${exerciseCount} exercise${exerciseCount === 1 ? '' : 's'} in progress`;
+  }, [activeWorkout]);
 
   const listContent = useMemo(() => {
     if (!userId && !authLoading) {
@@ -108,13 +173,37 @@ export default function WorkoutScreen() {
     }
 
     return (
-      <WorkoutSearch workouts={workouts} deletingId={deletingId} onDelete={confirmDelete} />
+      <WorkoutSearch
+        workouts={workouts}
+        deletingId={deletingId}
+        onDelete={confirmDelete}
+        onStartActive={handleStartActiveFromTemplate}
+      />
     );
-  }, [authLoading, deletingId, error, isBusy, refresh, userId, workouts, confirmDelete]);
+  }, [
+    authLoading,
+    deletingId,
+    error,
+    isBusy,
+    refresh,
+    userId,
+    workouts,
+    confirmDelete,
+    handleStartActiveFromTemplate,
+  ]);
 
   return (
     <View style={styles.root}>
       <View style={styles.buttonContainer}>
+        <TouchableOpacity style={styles.activeButton} onPress={handleOpenActiveModal}>
+          <View style={styles.activeRow}>
+            <View style={[styles.statusDot, activeWorkout && styles.statusDotActive]} />
+            <Text style={styles.activeButtonLabel}>
+              {activeWorkout ? 'View active workout' : 'Active workout'}
+            </Text>
+          </View>
+          <Text style={styles.activeButtonMeta}>{activeSummary}</Text>
+        </TouchableOpacity>
         <TouchableOpacity
           style={[styles.newButton, (!userId || creating) && styles.newButtonDisabled]}
           onPress={handleOpenModal}
@@ -139,6 +228,13 @@ export default function WorkoutScreen() {
         onClose={handleCloseModal}
         onSubmit={handleSubmit}
       />
+      <ActiveWorkoutModal
+        visible={activeModalVisible}
+        templates={workouts}
+        onClose={handleCloseActiveModal}
+        exerciseOptions={exercises}
+        exerciseOptionsLoading={exerciseOptionsLoading}
+      />
     </View>
   );
 }
@@ -153,8 +249,48 @@ const styles = StyleSheet.create({
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
+    alignItems: 'center',
     marginTop: 12,
     marginRight: 10,
+  },
+  activeButton: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e1e1e1',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginRight: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  activeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  statusDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#dcdcdc',
+    marginRight: 8,
+  },
+  statusDotActive: {
+    backgroundColor: '#29b36f',
+  },
+  activeButtonLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111',
+  },
+  activeButtonMeta: {
+    color: '#777',
+    fontSize: 12,
   },
   newButton: {
     backgroundColor: '#007AFF',

@@ -1,16 +1,15 @@
 #!/usr/bin/env node
 
-import { spawn } from 'node:child_process';
-import { existsSync, promises as fs } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { config as loadEnv } from 'dotenv';
+import { config as loadEnv } from "dotenv";
+import { spawn } from "node:child_process";
+import { existsSync, promises as fs } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const envPath = resolve(__dirname, '../.env');
-
+const envPath = resolve(__dirname, "../.env");
 if (existsSync(envPath)) {
   loadEnv({ path: envPath });
 }
@@ -18,95 +17,99 @@ if (existsSync(envPath)) {
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 
 if (!supabaseUrl) {
-  console.error('Missing EXPO_PUBLIC_SUPABASE_URL environment variable.');
+  console.error("Error: Missing EXPO_PUBLIC_SUPABASE_URL.");
   process.exit(1);
 }
 
-const projectMatch = supabaseUrl.match(/^https:\/\/([^.]+)\.supabase\.co/);
+const cleanUrl = supabaseUrl.replace(/['"]/g, "").trim();
+const projectRef = cleanUrl.split(".")[0].replace("https://", "");
 
-if (!projectMatch) {
-  console.error(
-    'Unable to derive the Supabase project reference from EXPO_PUBLIC_SUPABASE_URL.'
-  );
+if (!projectRef || projectRef.length < 5 || projectRef.includes(" ")) {
+  console.error("Error: Invalid project ID parsed:", `"${projectRef}"`);
   process.exit(1);
 }
 
-const projectRef = projectMatch[1];
-const schemaEnv = process.env.SUPABASE_SCHEMAS ?? 'public';
+const schemaEnv = process.env.SUPABASE_SCHEMAS ?? "public";
 const schemas = schemaEnv
-  .split(',')
-  .map((schema) => schema.trim())
+  .split(",")
+  .map((s) => s.trim())
   .filter(Boolean);
 
-if (schemas.length === 0) {
-  console.error('At least one schema must be provided via SUPABASE_SCHEMAS.');
+const rawToken = process.env.SUPABASE_ACCESS_TOKEN || "";
+const authToken = rawToken.replace(/['"]/g, "").trim();
+
+if (!authToken || !authToken.startsWith("sbp_")) {
+  console.error("Error: Invalid or missing SUPABASE_ACCESS_TOKEN.");
+  console.error(
+    "Go to https://supabase.com/dashboard/account/tokens to generate one.",
+  );
   process.exit(1);
 }
 
-if (!process.env.SUPABASE_ACCESS_TOKEN) {
-  console.warn(
-    'Warning: SUPABASE_ACCESS_TOKEN is not set. The Supabase CLI requires an access token when generating types.'
-  );
-}
+const generateTypes = () => {
+  // We'll use npx as the command and pass args separately
+  const args = [
+    "supabase",
+    "gen",
+    "types",
+    "typescript",
+    "--project-id",
+    projectRef,
+  ];
 
-const baseArgs = ['gen', 'types', 'typescript', '--project-id', projectRef];
-schemas.forEach((schema) => {
-  baseArgs.push('--schema', schema);
-});
-
-const typesPath = resolve(__dirname, '../types/supabase.ts');
-const header =
-  '// Code generated via scripts/generate-supabase-types.mjs. Do not edit manually.\n\n';
-
-const env = { ...process.env };
-
-const runCommand = (command, args) =>
-  new Promise((resolve, reject) => {
-    const child = spawn(command, args, { env, stdio: ['ignore', 'pipe', 'inherit'] });
-
-    child.once('error', (error) => {
-      reject(error);
-    });
-
-    const chunks = [];
-    child.stdout.setEncoding('utf8');
-    child.stdout.on('data', (chunk) => {
-      chunks.push(chunk);
-    });
-
-    child.on('close', (code) => {
-      if (code === 0) {
-        resolve(chunks.join(''));
-      } else {
-        const error = new Error(`${command} exited with code ${code ?? 'unknown'}`);
-        error.code = code;
-        reject(error);
-      }
-    });
+  schemas.forEach((s) => {
+    args.push("--schema");
+    args.push(s);
   });
 
-const writeTypesFile = async (content) => {
-  const withTrailingNewline = content.endsWith('\n') ? content : `${content}\n`;
-  await fs.writeFile(typesPath, `${header}${withTrailingNewline}`, 'utf8');
+  console.log(`Generating types for project ID: ${projectRef}...`);
+
+  // Setting shell: false (default) and using 'npx' directly is safer
+  const supabase = spawn("npx", args, {
+    env: { ...process.env, SUPABASE_ACCESS_TOKEN: authToken },
+    // On Windows, npx often needs shell: true, but on Mac/Linux it's better without.
+    // Let's use a platform check just in case.
+    shell: process.platform === "win32",
+  });
+
+  let output = "";
+  let errorOutput = "";
+
+  supabase.stdout.on("data", (data) => {
+    output += data.toString();
+  });
+
+  supabase.stderr.on("data", (data) => {
+    errorOutput += data.toString();
+  });
+
+  supabase.on("close", async (code) => {
+    if (code !== 0) {
+      console.error("Type generation failed:\n", errorOutput);
+      return;
+    }
+
+    // SAFETY CHECK: If output is empty or too short, don't overwrite!
+    if (output.trim().length < 100) {
+      console.error(
+        "Error: The CLI returned empty types. Check if your tables actually exist in the 'public' schema.",
+      );
+      console.log("CLI Error Output:", errorOutput);
+      return;
+    }
+
+    const typesPath = resolve(__dirname, "../types/supabase.ts");
+    const header =
+      "// Code generated via scripts/generate-supabase-types.mjs. Do not edit manually.\n\n";
+
+    try {
+      await fs.mkdir(dirname(typesPath), { recursive: true });
+      await fs.writeFile(typesPath, header + output);
+      console.log(`Types successfully saved to ${typesPath}`);
+    } catch (err) {
+      console.error("Failed to write types file:", err);
+    }
+  });
 };
 
-const main = async () => {
-  try {
-    const output = await runCommand('supabase', baseArgs).catch(async (error) => {
-      if (error && error.code === 'ENOENT') {
-        console.log('Supabase CLI not found on PATH. Falling back to `npx supabase`.');
-        return runCommand('npx', ['supabase', ...baseArgs]);
-      }
-
-      throw error;
-    });
-
-    await writeTypesFile(output);
-    console.log(`Supabase types written to ${typesPath}`);
-  } catch (error) {
-    console.error(error instanceof Error ? error.message : error);
-    process.exit(1);
-  }
-};
-
-main();
+generateTypes();

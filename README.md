@@ -1,81 +1,82 @@
 ## Start Project
+
 `npx expo start`
 
-
 # Generate Supabase Types
+
 `npx supabase gen types typescript --project-id rkdgcxrqascpfnidrayg > ./types/supabase.ts`
 `npx supabase login`
 
-├── app/                             # Expo Router navigation
-│   ├── (auth)/                      # Auth routes group
-│   │   ├── login.tsx
-│   │   └── register.tsx
-│   │
-│   ├── (main)/                      # Main app routes group
-│   │   ├── index.tsx                # Dashboard or home
-│   │   ├── workouts/
-│   │   │   ├── index.tsx            # Workout list
-│   │   │   ├── [id].tsx             # Single workout page=
-│   │   │   └── new.tsx              # New workout page
-│   │   │
-│   │   └── exercises/
-│   │       ├── index.tsx            # All exercises
-│   │       └── new.tsx              # Add exercise
-│   │
-│   └── _layout.tsx                  # Main navigation layout
+├── app/ # Expo Router navigation
+│ ├── (auth)/ # Auth routes group
+│ │ ├── login.tsx
+│ │ └── register.tsx
+│ │
+│ ├── (main)/ # Main app routes group
+│ │ ├── index.tsx # Dashboard or home
+│ │ ├── workouts/
+│ │ │ ├── index.tsx # Workout list
+│ │ │ ├── [id].tsx # Single workout page=
+│ │ │ └── new.tsx # New workout page
+│ │ │
+│ │ └── exercises/
+│ │ ├── index.tsx # All exercises
+│ │ └── new.tsx # Add exercise
+│ │
+│ └── \_layout.tsx # Main navigation layout
 │
-├── assets/                          # Images, fonts, icons, etc.
+├── assets/ # Images, fonts, icons, etc.
 │
-├── components/                      # Shared UI components
-│   ├── ExerciseForm.tsx
-│   ├── WorkoutCard.tsx
-│   ├── Button.tsx
-│   ├── Input.tsx
-│   └── LoadingSpinner.tsx
+├── components/ # Shared UI components
+│ ├── ExerciseForm.tsx
+│ ├── WorkoutCard.tsx
+│ ├── Button.tsx
+│ ├── Input.tsx
+│ └── LoadingSpinner.tsx
 │
-├── constants/                       # Static values or enums
-│   ├── colors.ts
-│   ├── spacing.ts
-│   └── typography.ts
+├── constants/ # Static values or enums
+│ ├── colors.ts
+│ ├── spacing.ts
+│ └── typography.ts
 │
-├── context/                         # App-wide state (providers)
-│   ├── AuthContext.tsx
-│   └── ActiveWorkoutContext.tsx
+├── context/ # App-wide state (providers)
+│ ├── AuthContext.tsx
+│ └── ActiveWorkoutContext.tsx
 │
-├── db/                              # Supabase + DB config
-│   ├── client.ts                    # Supabase client setup
-│   └── schema.sql                   # Optional: SQL table definitions
+├── db/ # Supabase + DB config
+│ ├── client.ts # Supabase client setup
+│ └── schema.sql # Optional: SQL table definitions
 │
-├── features/                        # Hybrid feature structure
-│   ├── workouts/
-│   │   ├── api.ts                   # CRUD requests
-│   │   ├── hooks.ts                 # useAddWorkout, useGetWorkouts
-│   │   ├── utils.ts                 # feature-specific helpers
-│   │   └── types.ts
-│   │
-│   ├── exercises/
-│   │   ├── api.ts                   # CRUD for exercises
-│   │   ├── hooks.ts
-│   │   ├── types.ts
-│   │   └── utils.ts
-│   │
-│   └── auth/
-│       ├── api.ts
-│       ├── hooks.ts
-│       └── types.ts
+├── features/ # Hybrid feature structure
+│ ├── workouts/
+│ │ ├── api.ts # CRUD requests
+│ │ ├── hooks.ts # useAddWorkout, useGetWorkouts
+│ │ ├── utils.ts # feature-specific helpers
+│ │ └── types.ts
+│ │
+│ ├── exercises/
+│ │ ├── api.ts # CRUD for exercises
+│ │ ├── hooks.ts
+│ │ ├── types.ts
+│ │ └── utils.ts
+│ │
+│ └── auth/
+│ ├── api.ts
+│ ├── hooks.ts
+│ └── types.ts
 │
-├── hooks/                           # Shared hooks (not feature-specific)
-│   ├── useAuth.ts
-│   ├── useTheme.ts
-│   └── useOnlineStatus.ts
+├── hooks/ # Shared hooks (not feature-specific)
+│ ├── useAuth.ts
+│ ├── useTheme.ts
+│ └── useOnlineStatus.ts
 │
-├── lib/                             # Shared library setup (infrastructure)
-│   ├── navigation.ts                # Expo router helpers
-│   ├── supabase.ts                  # Supabase setup (if not in /db)
-│   ├── storage.ts                   # AsyncStorage helpers
-│   └── logger.ts                    # Logging/debug utilities
+├── lib/ # Shared library setup (infrastructure)
+│ ├── navigation.ts # Expo router helpers
+│ ├── supabase.ts # Supabase setup (if not in /db)
+│ ├── storage.ts # AsyncStorage helpers
+│ └── logger.ts # Logging/debug utilities
 │
-├── .env                             # Environment variables
+├── .env # Environment variables
 ├── .gitignore
 ├── app.json
 ├── expo-env.d.ts
@@ -103,3 +104,59 @@
 - `features/exercises/components/ExerciseFormModal.tsx` – shared modal used for creating and editing exercises.
 - `features/auth/api.ts` / `hooks.ts` / `types.ts` – Supabase auth helpers shared by sign-in, sign-up, and profile screens.
 - Avatar uploads expect a Supabase storage bucket named `avatars` with policies that let users read/write their own file (see `features/auth/api.ts`) and `expo-image-picker` installed in the Expo app.
+
+---
+
+## 🛠 Database Migration Workflow
+
+To keep the database schema and TypeScript types in sync, follow these steps whenever you need to add or modify tables.
+
+### 1. Create a New Migration File
+
+Run the following command to generate a timestamped SQL file in `supabase/migrations/`:
+
+```bash
+make migration name=your_change_description
+```
+
+_Example: `make migration name=add_calories_to_sets`_
+
+### 2. Add your SQL
+
+Open the newly created file in `supabase/migrations/` and write your Postgres SQL commands.
+
+```sql
+-- Example: Adding a column
+ALTER TABLE public.workout_sets
+ADD COLUMN calories_burned FLOAT;
+```
+
+### 3. Sync to the Cloud
+
+This command will push your local migration to the live Supabase project and automatically update your TypeScript definitions in `types/supabase.ts`.
+
+```bash
+make sync
+```
+
+---
+
+### 🚨 Rules of the Road
+
+- **The Timestamp is King:** Do not rename the files. The numbers ensure migrations run in the correct order.
+- **Migrations are Permanent:** Once a migration has been run with `make sync`, **do not edit it.** If you made a mistake (e.g., misspelled a column name), create a _new_ migration to fix it.
+- **Version Control:** Always commit your `supabase/migrations/` files to Git. This allows other contributors to mirror your database state exactly.
+
+---
+
+### Pro-Tip: How to check what is "Live"
+
+If you aren't sure if your migrations are in sync with the cloud, you can run:
+
+```bash
+npx supabase migration list
+```
+
+This will show you a list of all migration files and tell you which ones are **Active** (already on the server) and which ones are **Pending** (only on your computer).
+
+Does this workflow make sense for how you want to build your gym app, or should we add a command to "Reset" the database for local testing?

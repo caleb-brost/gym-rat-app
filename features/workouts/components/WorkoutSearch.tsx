@@ -9,12 +9,14 @@ interface WorkoutSearchProps {
   workouts: Workout[];
   deletingId?: string | null;
   onDelete: (workout: Workout) => void;
+  onStartActive?: (workout: Workout) => void;
 }
 
 export const WorkoutSearch: React.FC<WorkoutSearchProps> = ({
   workouts,
   deletingId,
   onDelete,
+  onStartActive,
 }) => {
   const { query, setQuery, results } = useWorkoutSearch(workouts);
   const hasResults = results.length > 0;
@@ -35,6 +37,7 @@ export const WorkoutSearch: React.FC<WorkoutSearchProps> = ({
                 workout={workout}
                 deleting={deletingId === workout.id}
                 onDelete={onDelete}
+                onStart={onStartActive}
               />
             </View>
           ))}

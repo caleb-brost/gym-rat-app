@@ -6,9 +6,10 @@ interface WorkoutCardProps {
   workout: Workout;
   onDelete: (workout: Workout) => void;
   deleting?: boolean;
+  onStart?: (workout: Workout) => void;
 }
 
-export const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout, onDelete, deleting }) => {
+export const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout, onDelete, deleting, onStart }) => {
   return (
     <View style={styles.card}>
       <View style={styles.headerRow}>
@@ -16,14 +17,25 @@ export const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout, onDelete, del
           <Text style={styles.title}>{workout.name}</Text>
           {workout.notes ? <Text style={styles.notes}>{workout.notes}</Text> : null}
         </View>
-        <TouchableOpacity
-          accessibilityRole="button"
-          style={[styles.deleteButton, deleting && styles.deleteButtonDisabled]}
-          onPress={() => onDelete(workout)}
-          disabled={!!deleting}
-        >
-          <Text style={styles.deleteButtonText}>{deleting ? 'Deleting...' : 'Delete'}</Text>
-        </TouchableOpacity>
+        <View style={styles.actionsRow}>
+          {onStart ? (
+            <TouchableOpacity
+              accessibilityRole="button"
+              style={styles.startButton}
+              onPress={() => onStart(workout)}
+            >
+              <Text style={styles.startButtonText}>Start</Text>
+            </TouchableOpacity>
+          ) : null}
+          <TouchableOpacity
+            accessibilityRole="button"
+            style={[styles.deleteButton, deleting && styles.deleteButtonDisabled]}
+            onPress={() => onDelete(workout)}
+            disabled={!!deleting}
+          >
+            <Text style={styles.deleteButtonText}>{deleting ? 'Deleting...' : 'Delete'}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {workout.exercises.length === 0 ? (
@@ -81,6 +93,22 @@ const styles = StyleSheet.create({
     marginTop: 4,
     color: '#555',
     fontSize: 14,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  startButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    marginRight: 8,
+  },
+  startButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 13,
   },
   deleteButton: {
     backgroundColor: '#f2f2f2',
