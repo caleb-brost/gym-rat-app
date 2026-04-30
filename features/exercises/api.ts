@@ -1,24 +1,27 @@
-import { supabase } from '@/db/supabaseClient';
-import type { Database } from '@/types/supabase';
+import { supabase } from "@/db/supabaseClient";
+import type { Database } from "@/types/supabase";
 import type {
   Equipment,
   Exercise,
   ExerciseType,
   NewExercisePayload,
-} from './types';
+} from "./types";
 
-type ExerciseRow = Database['public']['Tables']['exercises']['Row'];
-type EquipmentRow = Database['public']['Tables']['equipment']['Row'];
+type ExerciseRow = Database["public"]["Tables"]["exercises"]["Row"];
+type EquipmentRow = Database["public"]["Tables"]["equipment"]["Row"];
 type ExerciseQueryRow = ExerciseRow & {
-  equipment: Pick<EquipmentRow, 'id' | 'name' | 'description' | 'icon_url'> | null;
+  equipment: Pick<
+    EquipmentRow,
+    "id" | "name" | "description" | "icon_url"
+  > | null;
 };
-export const ADMIN_USER_ID = 'd308b30f-f210-4906-8444-c131191e087d';
+export const ADMIN_USER_ID = "aac7e28d-1d18-4646-be71-6295213adef3"; // TODO: replace with actual admin ID
 
-const normalizeType = (value: ExerciseRow['type']): ExerciseType => {
-  if (value === 'time' || value === 'distance' || value === 'weight') {
+const normalizeType = (value: ExerciseRow["type"]): ExerciseType => {
+  if (value === "time" || value === "distance" || value === "weight") {
     return value;
   }
-  return 'weight';
+  return "weight";
 };
 
 const mapExerciseRow = (row: ExerciseQueryRow): Exercise => ({
@@ -53,28 +56,31 @@ export const listExercises = async (): Promise<Exercise[]> => {
     throw sessionError;
   }
 
-  const ownerIds = new Set<string>([ADMIN_USER_ID]);
+  const adminUserId = process.env.ADMIN_USER_ID ?? ADMIN_USER_ID;
+  const ownerIds = new Set<string>([adminUserId].filter(Boolean) as string[]);
   const currentUserId = session?.user?.id;
 
   if (currentUserId) {
     ownerIds.add(currentUserId);
   }
 
-  const filters: string[] = Array.from(ownerIds).map((id) => `user_id.eq.${id}`);
-  filters.push('user_id.is.null');
+  const filters: string[] = Array.from(ownerIds).map(
+    (id) => `user_id.eq.${id}`,
+  );
+  filters.push("user_id.is.null");
 
   const query = supabase
-    .from('exercises')
-    .select(
-      '*, equipment:equipment_id(id, name, description, icon_url)',
-    )
-    .order('name', { ascending: true });
+    .from("exercises")
+    .select("*, equipment:equipment_id(id, name, description, icon_url)")
+    .order("name", { ascending: true });
 
   if (filters.length > 0) {
-    query.or(filters.join(','));
+    query.or(filters.join(","));
   }
 
   const { data, error } = await query;
+
+  console.log("TEMP listExercises result:", { data, error }); // temp logging
 
   if (error) {
     throw error;
@@ -83,11 +89,13 @@ export const listExercises = async (): Promise<Exercise[]> => {
   return (data ?? []).map(mapExerciseRow);
 };
 
-export const createExercise = async (payload: NewExercisePayload): Promise<Exercise> => {
-  const insertPayload: Database['public']['Tables']['exercises']['Insert'] = {
+export const createExercise = async (
+  payload: NewExercisePayload,
+): Promise<Exercise> => {
+  const insertPayload: Database["public"]["Tables"]["exercises"]["Insert"] = {
     name: payload.name.trim(),
     category: payload.category ?? null,
-    type: payload.type ?? 'weight',
+    type: payload.type ?? "weight",
     muscle_groups:
       payload.muscleGroups && payload.muscleGroups.length > 0
         ? payload.muscleGroups
@@ -99,9 +107,9 @@ export const createExercise = async (payload: NewExercisePayload): Promise<Exerc
   };
 
   const { data, error } = await supabase
-    .from('exercises')
+    .from("exercises")
     .insert(insertPayload)
-    .select('*, equipment:equipment_id(id, name, description, icon_url)')
+    .select("*, equipment:equipment_id(id, name, description, icon_url)")
     .single();
 
   if (error || !data) {
@@ -113,20 +121,23 @@ export const createExercise = async (payload: NewExercisePayload): Promise<Exerc
 
 export const getExercise = async (id: string): Promise<Exercise | null> => {
   const { data, error } = await supabase
-    .from('exercises')
-    .select('*, equipment:equipment_id(id, name, description, icon_url)')
-    .eq('id', id)
+    .from("exercises")
+    .select("*, equipment:equipment_id(id, name, description, icon_url)")
+    .eq("id", id)
     .maybeSingle();
-  
+
   if (error) {
     throw error;
   }
 
   return data ? mapExerciseRow(data) : null;
-}
+};
 
-export const updateExercise = async (id: string, payload: Partial<NewExercisePayload>): Promise<Exercise> => {
-  const updatePayload: Database['public']['Tables']['exercises']['Update'] = {
+export const updateExercise = async (
+  id: string,
+  payload: Partial<NewExercisePayload>,
+): Promise<Exercise> => {
+  const updatePayload: Database["public"]["Tables"]["exercises"]["Update"] = {
     ...(payload.name !== undefined && { name: payload.name.trim() }),
     ...(payload.category !== undefined && {
       category: payload.category ?? null,
@@ -153,10 +164,10 @@ export const updateExercise = async (id: string, payload: Partial<NewExercisePay
   };
 
   const { data, error } = await supabase
-    .from('exercises')
+    .from("exercises")
     .update(updatePayload)
-    .eq('id', id)
-    .select('*, equipment:equipment_id(id, name, description, icon_url)')
+    .eq("id", id)
+    .select("*, equipment:equipment_id(id, name, description, icon_url)")
     .single();
 
   if (error || !data) {
@@ -167,10 +178,7 @@ export const updateExercise = async (id: string, payload: Partial<NewExercisePay
 };
 
 export const deleteExercise = async (id: string): Promise<void> => {
-  const { error } = await supabase
-    .from('exercises')
-    .delete()
-    .eq('id', id);
+  const { error } = await supabase.from("exercises").delete().eq("id", id);
 
   if (error) {
     throw error;
@@ -179,9 +187,9 @@ export const deleteExercise = async (id: string): Promise<void> => {
 
 export const listEquipment = async (): Promise<Equipment[]> => {
   const { data, error } = await supabase
-    .from('equipment')
-    .select('*')
-    .order('name', { ascending: true });
+    .from("equipment")
+    .select("*")
+    .order("name", { ascending: true });
 
   if (error) {
     throw error;

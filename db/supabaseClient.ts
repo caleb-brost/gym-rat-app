@@ -1,15 +1,16 @@
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from '../types/supabase';
+import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const supabasePublicKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
 if (!supabaseUrl) {
-  throw new Error('Missing EXPO_PUBLIC_SUPABASE_URL environment variable.');
+  throw new Error("Missing EXPO_PUBLIC_SUPABASE_URL environment variable.");
 }
 
-if (!supabaseAnonKey) {
-  throw new Error('Missing EXPO_PUBLIC_SUPABASE_ANON_KEY environment variable.');
+if (!supabasePublicKey) {
+  throw new Error(
+    "Missing EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY environment variable.",
+  );
 }
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabasePublicKey);

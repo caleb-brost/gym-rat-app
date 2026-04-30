@@ -1,0 +1,6 @@
+-- Delete all data from working tables
+TRUNCATE TABLE public.equipment RESTART IDENTITY CASCADE;
+TRUNCATE TABLE public.exercises RESTART IDENTITY CASCADE;
+TRUNCATE TABLE public.workout_exercises RESTART IDENTITY CASCADE;
+TRUNCATE TABLE public.workout_sets RESTART IDENTITY CASCADE;
+TRUNCATE TABLE public.workouts RESTART IDENTITY CASCADE;

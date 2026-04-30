@@ -1,10 +1,16 @@
-import { supabase } from '@/db/supabaseClient';
-import { getSupabaseErrorMessage } from '@/lib/supabase/errors';
-import Fuse from 'fuse.js';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { createExercise, deleteExercise, listEquipment, listExercises, updateExercise } from './api';
-import type { Equipment, Exercise, NewExercisePayload } from './types';
-import { sortExercisesByName } from './utils';
+import { supabase } from "@/db/supabaseClient";
+import { getSupabaseErrorMessage } from "@/lib/supabase/errors";
+import Fuse from "fuse.js";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  createExercise,
+  deleteExercise,
+  listEquipment,
+  listExercises,
+  updateExercise,
+} from "./api";
+import type { Equipment, Exercise, NewExercisePayload } from "./types";
+import { sortExercisesByName } from "./utils";
 
 export const useExercises = () => {
   const [exercises, setExercises] = useState<Exercise[]>([]);
@@ -20,9 +26,12 @@ export const useExercises = () => {
 
     try {
       const data = await listExercises();
+      console.log("Fetched exercises:", data); // temp logging
       setExercises(data);
     } catch (refreshError) {
-      setError(getSupabaseErrorMessage(refreshError, 'Failed to load exercises.'));
+      setError(
+        getSupabaseErrorMessage(refreshError, "Failed to load exercises."),
+      );
       setExercises([]);
     } finally {
       setLoading(false);
@@ -33,33 +42,30 @@ export const useExercises = () => {
     void refresh();
   }, [refresh]);
 
-  const handleCreate = useCallback(
-    async (payload: NewExercisePayload) => {
-      setCreating(true);
-      try {
-        const {
-          data: { session },
-          error: sessionError,
-        } = await supabase.auth.getSession();
+  const handleCreate = useCallback(async (payload: NewExercisePayload) => {
+    setCreating(true);
+    try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
 
-        if (sessionError) throw sessionError;
+      if (sessionError) throw sessionError;
 
-        payload.userId = session?.user?.id ?? null;
+      payload.userId = session?.user?.id ?? null;
 
-        if (!payload.userId) {
-          throw new Error('You must be signed in to create an exercise.');
-        }
-
-        const exercise = await createExercise({ ...payload });
-        setExercises((prev) => sortExercisesByName([...prev, exercise]));
-        setError(null);
-        return exercise;
-      } finally {
-        setCreating(false);
+      if (!payload.userId) {
+        throw new Error("You must be signed in to create an exercise.");
       }
-    },
-    [],
-  );
+
+      const exercise = await createExercise({ ...payload });
+      setExercises((prev) => sortExercisesByName([...prev, exercise]));
+      setError(null);
+      return exercise;
+    } finally {
+      setCreating(false);
+    }
+  }, []);
 
   const handleUpdate = useCallback(
     async (id: string, payload: Partial<NewExercisePayload>) => {
@@ -106,7 +112,7 @@ export const useExercises = () => {
 };
 
 export const useExerciseSearch = (exercises: Exercise[]) => {
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState("");
 
   const fuse = useMemo(() => {
     if (exercises.length === 0) {
@@ -115,9 +121,9 @@ export const useExerciseSearch = (exercises: Exercise[]) => {
 
     return new Fuse(exercises, {
       keys: [
-        { name: 'name', weight: 0.6 },
-        { name: 'category', weight: 0.25 },
-        { name: 'muscleGroups', weight: 0.15 },
+        { name: "name", weight: 0.6 },
+        { name: "category", weight: 0.25 },
+        { name: "muscleGroups", weight: 0.15 },
       ],
       threshold: 0.4,
     });
@@ -156,7 +162,9 @@ export const useEquipmentOptions = () => {
       const data = await listEquipment();
       setEquipment(data);
     } catch (refreshError) {
-      setError(getSupabaseErrorMessage(refreshError, 'Failed to load equipment.'));
+      setError(
+        getSupabaseErrorMessage(refreshError, "Failed to load equipment."),
+      );
       setEquipment([]);
     } finally {
       setLoading(false);

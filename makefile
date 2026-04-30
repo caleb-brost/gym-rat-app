@@ -1,52 +1,60 @@
-# Load environment variables from .env
-ifneq ("$(wildcard .env)","")
+# Load environment if it exists
+ifneq (,$(wildcard .env))
     include .env
     export
 endif
 
-.PHONY: help migration sync push types login
+ENV ?= local
 
-# Help Menu
+.PHONY: help start start-local start-prod sync reset clean seed generate-types
+
 help:
 	@echo "GymRat Database Tools"
-	@echo " ○ make migration name=xxx - Create a new timestamped SQL migration"
-	@echo " ○ make sync               - Push local SQL to Supabase AND regenerate types"
-	@echo " ○ make wipe-db            - WARNING: Completely wipe the remote database"
-	@echo " ○ make push               - Only push SQL migrations to the cloud"
-	@echo " ○ make generate-types     - Only regenerate TypeScript types from the cloud"
-	@echo " ○ make login              - Log in to Supabase CLI"
+	@echo " ○ make start-local    - Start Docker + Expo (Local)"
+	@echo " ○ make start-prod     - Start Expo (Production)"
+	@echo " ○ make sync           - Reset DB + Seed + Generate Types"
+	@echo " ○ make reset          - Wipe DB (Conditional)"
+	@echo " ○ make seed           - Insert mock data"
 
-# Create a new migration file (Handles the timestamp for you)
-# Usage: make migration name=add_calories_column
-migration:
-	@npx supabase migration new $(name)
+start-local:
+	@open -a Docker && npx supabase start
+	@EXPO_PUBLIC_APP_ENV=local npx expo start
 
-# The Full Workflow
-# This pushes your local SQL changes, then asks the cloud for the new types.
+start-prod:
+	@EXPO_PUBLIC_APP_ENV=production npx expo start
+
+reset:
+	@if [ "$(ENV)" = "production" ]; then \
+		echo "!!! DANGER: Resetting PRODUCTION !!!"; \
+		read -p "Are you sure? (y/N) " confirm && [ "$$confirm" = "y" ] && npx supabase db reset --linked --yes; \
+	else \
+		npx supabase db reset --yes; \
+	fi
+
+seed:
+	@if [ "$(ENV)" = "production" ]; then \
+		echo "Seeding production is not supported."; \
+	else \
+		echo "Seeding local database..."; \
+		DB_URL=$$(npx supabase status -o env | grep '^DB_URL=' | cut -d= -f2- | tr -d '"'); \
+		if [ -z "$$DB_URL" ]; then \
+			echo "Unable to determine local DB URL from Supabase status."; \
+			exit 1; \
+		fi; \
+		echo "Using local DB URL: $$DB_URL"; \
+		psql "$$DB_URL" -f ./supabase/mock_data.sql; \
+	fi
+
 sync:
-	@$(MAKE) wipe-db
+	@$(MAKE) reset
+	@$(MAKE) seed
 	@$(MAKE) generate-types
-	@echo "Sync Complete: Cloud DB and Local Types are matching."
 
-wipe-db:
-	@echo "Wiping remote database at $(EXPO_PUBLIC_SUPABASE_URL)..."
-	@SUPABASE_DB_PASSWORD=$(SUPABASE_DB_PASSWORD) npx supabase db reset --linked --yes
-
-# Push SQL to Cloud
-push:
-	@echo "Pushing SQL migrations to glvcfjkxqjnylbvrshxu..."
-	@npx supabase db push
-
-# Generate Types (The .mjs script)
 generate-types:
-	@echo "Regenerating types from live database..."
-	@node scripts/generate-supabase-types.mjs
-
-# Login
-login:
-	@npx supabase login
-
-# Run on local host
-run:
-	@echo "Starting local development server..."
-	@npx expo start
+	@if [ "$(ENV)" = "production" ]; then \
+		echo "Generating types from REMOTE database..."; \
+		npx supabase gen types typescript --project-id "$(PROJECT_REF)" > types/supabase.ts; \
+	else \
+		echo "Generating types from LOCAL database..."; \
+		npx supabase gen types typescript --local > types/supabase.ts; \
+	fi
